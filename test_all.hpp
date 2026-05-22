@@ -1,0 +1,10 @@
+#pragma once
+#include "test/list_test.hpp"
+#include "test/set_test.hpp"
+#include "test/map_test.hpp"
+#include "test/Huffman_test.hpp"
+#include "test/priority_queue_test.hpp"
+#include "test/sorting_test.hpp"
+#include "test/topological_sorting_test.hpp"
+#include "test/shortest_path_test.hpp"
+#include "test/minimun_spanning_tree_test.hpp"
