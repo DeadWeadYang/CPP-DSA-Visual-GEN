@@ -37,8 +37,11 @@ namespace DSA
                 current_ctx_ = "default";
                 initialized_arrays_.clear();
                 initialized_btrees_.clear();
+                initialized_trees_.clear();
                 btree_node_ids_.clear();
+                tree_node_ids_.clear();
                 btree_node_seq_ = 0;
+                tree_node_seq_ = 0;
             }
 
             void End()
@@ -49,8 +52,11 @@ namespace DSA
                 seq_ = 0;
                 initialized_arrays_.clear();
                 initialized_btrees_.clear();
+                initialized_trees_.clear();
                 btree_node_ids_.clear();
+                tree_node_ids_.clear();
                 btree_node_seq_ = 0;
+                tree_node_seq_ = 0;
             }
 
             bool IsActive() const noexcept { return active_; }
@@ -104,6 +110,16 @@ namespace DSA
                 WriteEvent("array", "set", obj, args.str(), step, loc);
             }
 
+            template <typename RandIt>
+            void SyncArray(const std::string &obj, RandIt first, RandIt last, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"values\":" << JsonArray(first, last) << "}";
+                WriteEvent("array", "sync", obj, args.str(), step, loc);
+            }
+
             void Mark(const std::string &obj, int i, SourceLoc loc, bool step = false)
             {
                 if (!active_)
@@ -131,6 +147,17 @@ namespace DSA
                     return;
                 initialized_btrees_.insert(scoped);
                 WriteEvent("btree", "init", obj, "{\"nodes\":[]}", false, loc);
+            }
+
+            void EnsureTreeInit(const std::string &obj, SourceLoc loc)
+            {
+                if (!active_)
+                    return;
+                const std::string scoped = ScopedObjKey(obj);
+                if (initialized_trees_.count(scoped))
+                    return;
+                initialized_trees_.insert(scoped);
+                WriteEvent("tree", "init", obj, "{\"nodes\":[]}", false, loc);
             }
 
             template <typename NodePtr, typename V>
@@ -280,6 +307,145 @@ namespace DSA
                 WriteEvent("btree", "sync", obj, args.str(), step, loc);
             }
 
+            template <typename NodePtr, typename V>
+            void TreeNewNode(const std::string &obj, NodePtr node, const V &value, SourceLoc loc, bool step = true)
+            {
+                if (!active_ || !node)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"id\":\"" << Escape(GetOrCreateTreeNodeId(static_cast<const void *>(node))) << "\""
+                     << ",\"value\":" << JsonValue(value)
+                     << ",\"color\":\"black\"}";
+                WriteEvent("tree", "new_node", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void TreeSetRoot(const std::string &obj, NodePtr node, SourceLoc loc, bool step = true)
+            {
+                if (!active_)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"id\":" << TreeNodeRef(static_cast<const void *>(node)) << "}";
+                WriteEvent("tree", "set_root", obj, args.str(), step, loc);
+            }
+
+            template <typename ParentPtr, typename ChildPtr>
+            void TreeAddChild(const std::string &obj, ParentPtr parent, ChildPtr child, SourceLoc loc, bool step = true)
+            {
+                if (!active_ || !parent)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"parent\":" << TreeNodeRef(static_cast<const void *>(parent))
+                     << ",\"child\":" << TreeNodeRef(static_cast<const void *>(child)) << "}";
+                WriteEvent("tree", "add_child", obj, args.str(), step, loc);
+            }
+
+            template <typename ParentPtr, typename ChildPtr>
+            void TreeSetChild(const std::string &obj, ParentPtr parent, int pos, ChildPtr child, SourceLoc loc, bool step = true)
+            {
+                if (!active_ || !parent || pos < 0)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"parent\":" << TreeNodeRef(static_cast<const void *>(parent))
+                     << ",\"pos\":" << pos
+                     << ",\"child\":" << TreeNodeRef(static_cast<const void *>(child)) << "}";
+                WriteEvent("tree", "set_child", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void TreeRemoveNode(const std::string &obj, NodePtr node, SourceLoc loc, bool step = true)
+            {
+                if (!active_ || !node)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"id\":" << TreeNodeRef(static_cast<const void *>(node)) << "}";
+                WriteEvent("tree", "remove_node", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void TreeDestroyNode(const std::string &obj, NodePtr node, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"id\":" << TreeNodeRef(static_cast<const void *>(node)) << "}";
+                WriteEvent("tree", "destroy_node", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void TreeSetNote(const std::string &obj, NodePtr node, const std::string &note, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"id\":" << TreeNodeRef(static_cast<const void *>(node))
+                     << ",\"note\":\"" << Escape(note) << "\"}";
+                WriteEvent("tree", "set_note", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void TreeSetColor(const std::string &obj, NodePtr node, const std::string &color, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"id\":" << TreeNodeRef(static_cast<const void *>(node))
+                     << ",\"color\":\"" << Escape(color) << "\"}";
+                WriteEvent("tree", "set_color", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void TreeMark(const std::string &obj, NodePtr node, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"ids\":[" << TreeNodeRef(static_cast<const void *>(node)) << "]}";
+                WriteEvent("tree", "mark", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void TreeUnmark(const std::string &obj, NodePtr node, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"ids\":[" << TreeNodeRef(static_cast<const void *>(node)) << "]}";
+                WriteEvent("tree", "unmark", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void TreeHideNode(const std::string &obj, NodePtr node, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"id\":" << TreeNodeRef(static_cast<const void *>(node)) << "}";
+                WriteEvent("tree", "hide_node", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void TreeShowNode(const std::string &obj, NodePtr node, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"id\":" << TreeNodeRef(static_cast<const void *>(node)) << "}";
+                WriteEvent("tree", "show_node", obj, args.str(), step, loc);
+            }
+
         private:
             Logger() = default;
 
@@ -299,6 +465,24 @@ namespace DSA
                 if (!node)
                     return "null";
                 return std::string("\"") + Escape(GetOrCreateBTreeNodeId(node)) + "\"";
+            }
+
+            std::string &GetOrCreateTreeNodeId(const void *node)
+            {
+                auto it = tree_node_ids_.find(node);
+                if (it != tree_node_ids_.end())
+                    return it->second;
+                std::ostringstream oss;
+                oss << "t" << (++tree_node_seq_);
+                auto inserted = tree_node_ids_.emplace(node, oss.str());
+                return inserted.first->second;
+            }
+
+            std::string TreeNodeRef(const void *node)
+            {
+                if (!node)
+                    return "null";
+                return std::string("\"") + Escape(GetOrCreateTreeNodeId(node)) + "\"";
             }
             std::string ScopedObjKey(const std::string &obj) const
             {
@@ -413,8 +597,11 @@ namespace DSA
             std::string buffer_name_ = "B";
             std::unordered_set<std::string> initialized_arrays_;
             std::unordered_set<std::string> initialized_btrees_;
+            std::unordered_set<std::string> initialized_trees_;
             std::unordered_map<const void *, std::string> btree_node_ids_;
+            std::unordered_map<const void *, std::string> tree_node_ids_;
             std::size_t btree_node_seq_ = 0;
+            std::size_t tree_node_seq_ = 0;
         public:
             void SetContext(const std::string &ctx_name)
             {
@@ -446,6 +633,7 @@ namespace DSA
 #define DSA_VIS_ARR_FOCUS(obj, l, r, step) ::DSA::Vis::Logger::Global().Focus((obj), (l), (r), DSA_VIS_LOC, (step))
 #define DSA_VIS_ARR_SWAP(obj, i, j, step) ::DSA::Vis::Logger::Global().Swap((obj), (i), (j), DSA_VIS_LOC, (step))
 #define DSA_VIS_ARR_SET(obj, i, v, step) ::DSA::Vis::Logger::Global().Set((obj), (i), (v), DSA_VIS_LOC, (step))
+#define DSA_VIS_ARR_SYNC(obj, first, last, step) ::DSA::Vis::Logger::Global().SyncArray((obj), (first), (last), DSA_VIS_LOC, (step))
 #define DSA_VIS_ARR_MARK(obj, i, step) ::DSA::Vis::Logger::Global().Mark((obj), (i), DSA_VIS_LOC, (step))
 #define DSA_VIS_ARR_UNMARK(obj, i, step) ::DSA::Vis::Logger::Global().Unmark((obj), (i), DSA_VIS_LOC, (step))
 #define DSA_VIS_BT_INIT(obj) ::DSA::Vis::Logger::Global().EnsureBTreeInit((obj), DSA_VIS_LOC)
@@ -461,6 +649,19 @@ namespace DSA
 #define DSA_VIS_BT_MARK(obj, node, step) ::DSA::Vis::Logger::Global().BTreeMark((obj), (node), DSA_VIS_LOC, (step))
 #define DSA_VIS_BT_UNMARK(obj, node, step) ::DSA::Vis::Logger::Global().BTreeUnmark((obj), (node), DSA_VIS_LOC, (step))
 #define DSA_VIS_BT_SYNC(obj, root, step) ::DSA::Vis::Logger::Global().BTreeSync((obj), (root), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_INIT(obj) ::DSA::Vis::Logger::Global().EnsureTreeInit((obj), DSA_VIS_LOC)
+#define DSA_VIS_TREE_NEW_NODE(obj, node, value, step) ::DSA::Vis::Logger::Global().TreeNewNode((obj), (node), (value), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_SET_ROOT(obj, node, step) ::DSA::Vis::Logger::Global().TreeSetRoot((obj), (node), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_ADD_CHILD(obj, parent, child, step) ::DSA::Vis::Logger::Global().TreeAddChild((obj), (parent), (child), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_SET_CHILD(obj, parent, pos, child, step) ::DSA::Vis::Logger::Global().TreeSetChild((obj), (parent), (pos), (child), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_REMOVE_NODE(obj, node, step) ::DSA::Vis::Logger::Global().TreeRemoveNode((obj), (node), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_DESTROY_NODE(obj, node, step) ::DSA::Vis::Logger::Global().TreeDestroyNode((obj), (node), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_SET_NOTE(obj, node, note, step) ::DSA::Vis::Logger::Global().TreeSetNote((obj), (node), (note), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_SET_COLOR(obj, node, color, step) ::DSA::Vis::Logger::Global().TreeSetColor((obj), (node), (color), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_MARK(obj, node, step) ::DSA::Vis::Logger::Global().TreeMark((obj), (node), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_UNMARK(obj, node, step) ::DSA::Vis::Logger::Global().TreeUnmark((obj), (node), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_HIDE_NODE(obj, node, step) ::DSA::Vis::Logger::Global().TreeHideNode((obj), (node), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_SHOW_NODE(obj, node, step) ::DSA::Vis::Logger::Global().TreeShowNode((obj), (node), DSA_VIS_LOC, (step))
 #else
 #define DSA_VIS_BEGIN(path) ((void)0)
 #define DSA_VIS_END() ((void)0)
@@ -471,6 +672,7 @@ namespace DSA
 #define DSA_VIS_ARR_FOCUS(obj, l, r, step) ((void)0)
 #define DSA_VIS_ARR_SWAP(obj, i, j, step) ((void)0)
 #define DSA_VIS_ARR_SET(obj, i, v, step) ((void)0)
+#define DSA_VIS_ARR_SYNC(obj, first, last, step) ((void)0)
 #define DSA_VIS_ARR_MARK(obj, i, step) ((void)0)
 #define DSA_VIS_ARR_UNMARK(obj, i, step) ((void)0)
 #define DSA_VIS_BT_INIT(obj) ((void)0)
@@ -486,4 +688,17 @@ namespace DSA
 #define DSA_VIS_BT_MARK(obj, node, step) ((void)0)
 #define DSA_VIS_BT_UNMARK(obj, node, step) ((void)0)
 #define DSA_VIS_BT_SYNC(obj, root, step) ((void)0)
+#define DSA_VIS_TREE_INIT(obj) ((void)0)
+#define DSA_VIS_TREE_NEW_NODE(obj, node, value, step) ((void)0)
+#define DSA_VIS_TREE_SET_ROOT(obj, node, step) ((void)0)
+#define DSA_VIS_TREE_ADD_CHILD(obj, parent, child, step) ((void)0)
+#define DSA_VIS_TREE_SET_CHILD(obj, parent, pos, child, step) ((void)0)
+#define DSA_VIS_TREE_REMOVE_NODE(obj, node, step) ((void)0)
+#define DSA_VIS_TREE_DESTROY_NODE(obj, node, step) ((void)0)
+#define DSA_VIS_TREE_SET_NOTE(obj, node, note, step) ((void)0)
+#define DSA_VIS_TREE_SET_COLOR(obj, node, color, step) ((void)0)
+#define DSA_VIS_TREE_MARK(obj, node, step) ((void)0)
+#define DSA_VIS_TREE_UNMARK(obj, node, step) ((void)0)
+#define DSA_VIS_TREE_HIDE_NODE(obj, node, step) ((void)0)
+#define DSA_VIS_TREE_SHOW_NODE(obj, node, step) ((void)0)
 #endif

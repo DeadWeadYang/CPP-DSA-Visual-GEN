@@ -1,5 +1,7 @@
 #pragma once
 #include <memory>
+#include <limits>
+#include <type_traits>
 namespace DSA
 {
     namespace Utils
@@ -8,7 +10,7 @@ namespace DSA
         template <typename Pair>
         struct Select1stKeyOfValue
         {
-            const Pair::first_type &operator()(const Pair &v) const { return v.first; }
+            const typename Pair::first_type &operator()(const Pair &v) const { return v.first; }
         };
         template <typename T>
         struct IdentityKeyOfValue

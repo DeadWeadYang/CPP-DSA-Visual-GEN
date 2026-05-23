@@ -8,7 +8,9 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <unordered_map>
 #include "binary_tree_basic.hpp"
+#include "../../vis_trace.hpp"
 
 namespace DSA
 {
@@ -65,6 +67,10 @@ namespace DSA
                         // 重载 operator()，使得优先队列成为一个最小堆（权重小的节点优先级高）。
                         bool operator()(Node *pleft, Node *pright) { return pleft->value() > pright->value(); }
                     };
+                    struct VisualNode
+                    {
+                        int tag = 0;
+                    };
                     // 获取树的带权路径长度 (WPL)。
                     T getWeightedPathLength() const { return WPL; }
                     // 获取生成的霍夫曼编码表。
@@ -81,9 +87,15 @@ namespace DSA
                             this->clear();
                         // 创建一个最小优先队列（最小堆），用于存储树节点。
                         std::priority_queue<Node *, std::vector<Node *>, NodeCompare> heap;
+                        init_vis_forest();
                         for (auto const &kv : weights)
                             // 为每个带权重的标签创建一个叶子节点，并将其推入最小堆。
-                            heap.push(this->createNodeInternal(kv.first, kv.second));
+                        {
+                            Node *leaf = this->createNodeInternal(kv.first, kv.second);
+                            heap.push(leaf);
+                            vis_new_node(leaf, false);
+                            vis_attach_to_forest(leaf, false);
+                        }
                         // 循环合并节点，直到堆中只剩下一个节点（即树的根节点）。
                         while (heap.size() > 1)
                         {
@@ -92,13 +104,23 @@ namespace DSA
                             heap.pop();
                             Node *pright = heap.top();
                             heap.pop();
+                            vis_mark(pleft, false);
+                            vis_mark(pright, false);
                             // 创建一个新的内部节点作为它们的父节点。
                             // 新节点的权重是两个子节点权重之和，标签可任意（此处为0）。
                             Node *pparent = this->createNodeInternal(0, pleft->value().weight + pright->value().weight);
+                            vis_new_node(pparent, false);
                             // 建立亲子关系。
                             pparent->left() = pleft;
                             pparent->right() = pright;
                             pleft->parent = pright->parent = pparent;
+                            vis_detach_from_forest(pleft, false);
+                            vis_detach_from_forest(pright, false);
+                            vis_attach_child(pparent, pleft, false);
+                            vis_attach_child(pparent, pright, false);
+                            vis_attach_to_forest(pparent, true);
+                            vis_unmark(pleft, false);
+                            vis_unmark(pright, false);
 
                             // 将新创建的父节点推回堆中。
                             heap.push(pparent);
@@ -108,6 +130,7 @@ namespace DSA
                         {
                             // `release` 方法将堆中的根节点设置为树的根节点。
                             this->release(heap.top());
+                            vis_set_final_root(heap.top(), false);
                             heap.pop();
                         }
                         // 计算带权路径长度 (WPL)。
@@ -129,6 +152,102 @@ namespace DSA
                 private:
                     T WPL;                                  // 存储带权路径长度 (Weighted Path Length)。
                     std::map<int, std::string> HuffmanCode; // 存储从标签到霍夫曼编码的映射。
+                    static constexpr const char *k_vis_obj = "H";
+                    VisualNode vis_super_root_;
+                    std::unordered_map<const Node *, VisualNode> vis_nodes_;
+
+                    std::string vis_node_text(const Node *node) const
+                    {
+                        if (!node)
+                            return std::string();
+                        const auto &v = node->value();
+                        std::ostringstream oss;
+                        if (v.label == 0)
+                        {
+                            oss << "#:" << v.weight;
+                        }
+                        else
+                        {
+                            oss << "L" << v.label << ":" << v.weight;
+                        }
+                        return oss.str();
+                    }
+
+                    VisualNode *vis_of(const Node *node)
+                    {
+                        if (!node)
+                            return nullptr;
+                        auto it = vis_nodes_.find(node);
+                        if (it == vis_nodes_.end())
+                            return nullptr;
+                        return &it->second;
+                    }
+
+                    void init_vis_forest()
+                    {
+                        vis_nodes_.clear();
+                        DSA_VIS_TREE_INIT(k_vis_obj);                                      /*VIS*/
+                        DSA_VIS_TREE_NEW_NODE(k_vis_obj, &vis_super_root_, "forest", false); /*VIS*/
+                        DSA_VIS_TREE_SET_ROOT(k_vis_obj, &vis_super_root_, false);           /*VIS*/
+                        DSA_VIS_TREE_HIDE_NODE(k_vis_obj, &vis_super_root_, false);          /*VIS*/
+                    }
+
+                    void vis_new_node(const Node *node, bool step)
+                    {
+                        if (!node)
+                            return;
+                        auto [it, inserted] = vis_nodes_.emplace(node, VisualNode{0});
+                        if (!inserted)
+                            return;
+                        DSA_VIS_TREE_NEW_NODE(k_vis_obj, &it->second, vis_node_text(node), step); /*VIS*/
+                    }
+
+                    void vis_attach_to_forest(const Node *node, bool step)
+                    {
+                        if (VisualNode *vn = vis_of(node))
+                            DSA_VIS_TREE_ADD_CHILD(k_vis_obj, &vis_super_root_, vn, step); /*VIS*/
+                    }
+
+                    void vis_detach_from_forest(const Node *node, bool step)
+                    {
+                        if (VisualNode *vn = vis_of(node))
+                            DSA_VIS_TREE_REMOVE_NODE(k_vis_obj, vn, step); /*VIS*/
+                    }
+
+                    void vis_attach_child(const Node *parent, const Node *child, bool step)
+                    {
+                        VisualNode *vp = vis_of(parent);
+                        VisualNode *vc = vis_of(child);
+                        if (!vp || !vc)
+                            return;
+                        DSA_VIS_TREE_ADD_CHILD(k_vis_obj, vp, vc, step); /*VIS*/
+                    }
+
+                    void vis_mark(const Node *node, bool step)
+                    {
+                        if (VisualNode *vn = vis_of(node))
+                            DSA_VIS_TREE_MARK(k_vis_obj, vn, step); /*VIS*/
+                    }
+
+                    void vis_unmark(const Node *node, bool step)
+                    {
+                        if (VisualNode *vn = vis_of(node))
+                            DSA_VIS_TREE_UNMARK(k_vis_obj, vn, step); /*VIS*/
+                    }
+
+                    void vis_set_final_root(const Node *root, bool step)
+                    {
+                        if (!root)
+                            return;
+                        VisualNode *vr = vis_of(root);
+                        if (!vr)
+                            return;
+                        DSA_VIS_TREE_SHOW_NODE(k_vis_obj, &vis_super_root_, false);      /*VIS*/
+                        DSA_VIS_TREE_SET_NOTE(k_vis_obj, &vis_super_root_, "Huffman", false); /*VIS*/
+                        DSA_VIS_TREE_SET_ROOT(k_vis_obj, &vis_super_root_, false);        /*VIS*/
+                        DSA_VIS_TREE_SET_CHILD(k_vis_obj, &vis_super_root_, 0, vr, step); /*VIS*/
+                        DSA_VIS_TREE_HIDE_NODE(k_vis_obj, &vis_super_root_, false);       /*VIS*/
+                    }
 
                     /**
                      * @brief 递归计算树的带权路径长度 (WPL)。

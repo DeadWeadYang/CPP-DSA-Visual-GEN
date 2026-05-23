@@ -1,7 +1,11 @@
 #pragma once
 #include <vector>
+#include <deque>
 #include <functional>
 #include <algorithm>
+#include <string>
+#include <sstream>
+#include "../../vis_trace.hpp"
 
 namespace DSA
 {
@@ -42,13 +46,17 @@ namespace DSA
                      */
                     void push(const T &d)
                     {
+                        vis_ensure_init();
                         // 如果底层vector容量足够，直接在逻辑末尾放置元素，否则扩展向量。
                         if (size_r == data.size())
                             data.push_back(d);
                         else
                             data[size_r] = d;
+                        vis_add_index(size_r, false);
+                        ++size_r;
+                        vis_sync_array(false);
                         // 对新加入的元素执行上浮操作，并增加堆的逻辑大小。
-                        adjustUp(size_r++);
+                        adjustUp(static_cast<int>(size_r - 1));
                         // equivalent to std::push_heap
                     }
                     /**
@@ -60,8 +68,21 @@ namespace DSA
                      */
                     void pop()
                     {
+                        vis_ensure_init();
+                        if (!size_r)
+                            return;
+                        if (size_r == 1)
+                        {
+                            vis_remove_last_index(false);
+                            --size_r;
+                            vis_sync_array(false);
+                            return;
+                        }
                         // 将堆顶元素与最后一个元素交换，然后将堆的逻辑大小减一。
-                        std::swap(data[0], data[--size_r]);
+                        swap_indices(0, size_r - 1, true);
+                        vis_remove_last_index(false);
+                        --size_r;
+                        vis_sync_array(false);
                         // 对新的根节点执行下沉操作。
                         adjustDown(0);
                     }
@@ -78,6 +99,100 @@ namespace DSA
                     std::vector<T> data; // 使用 std::vector 作为堆的底层存储。
                     size_t size_r = 0;   // 堆的逻辑大小，可能小于 `data.size()`。
                     Compare comp;        // 用于比较元素的函数对象。
+                    struct VisualNode
+                    {
+                        int tag = 0;
+                    };
+                    std::deque<VisualNode> vis_pool;
+                    std::vector<VisualNode *> vis_nodes;
+                    VisualNode vis_super_root;
+                    bool vis_ready = false;
+                    static constexpr const char *k_vis_arr = "HA";
+                    static constexpr const char *k_vis_tree = "HT";
+
+                    std::string vis_to_string(const T &value) const
+                    {
+                        std::ostringstream oss;
+                        oss << value;
+                        return oss.str();
+                    }
+                    std::string vis_index_label(size_t idx) const
+                    {
+                        return std::string("i=") + std::to_string(idx);
+                    }
+                    void vis_ensure_init()
+                    {
+                        if (vis_ready)
+                            return;
+                        DSA_VIS_ARR_INIT(k_vis_arr, data.begin(), data.begin() + size_r);          /*VIS*/
+                        DSA_VIS_ARR_SYNC(k_vis_arr, data.begin(), data.begin() + size_r, false);   /*VIS*/
+                        DSA_VIS_BT_INIT(k_vis_tree);                                                /*VIS*/
+                        DSA_VIS_BT_NEW_NODE(k_vis_tree, &vis_super_root, "heap", false);           /*VIS*/
+                        DSA_VIS_BT_SET_ROOT(k_vis_tree, &vis_super_root, false);                   /*VIS*/
+                        DSA_VIS_BT_DESTROY_NODE(k_vis_tree, &vis_super_root, false);               /*VIS*/
+                        vis_pool.clear();
+                        vis_nodes.clear();
+                        for (size_t i = 0; i < size_r; ++i)
+                            vis_add_index(i, false);
+                        vis_ready = true;
+                    }
+                    void vis_sync_array(bool step)
+                    {
+                        DSA_VIS_ARR_SYNC(k_vis_arr, data.begin(), data.begin() + size_r, step); /*VIS*/
+                    }
+                    void vis_add_index(size_t idx, bool step)
+                    {
+                        if (idx >= vis_nodes.size())
+                            vis_nodes.resize(idx + 1, nullptr);
+                        if (vis_nodes[idx])
+                        {
+                            vis_refresh_index(idx, step);
+                            return;
+                        }
+                        vis_pool.emplace_back();
+                        VisualNode *node = &vis_pool.back();
+                        vis_nodes[idx] = node;
+                        DSA_VIS_BT_NEW_NODE(k_vis_tree, node, vis_index_label(idx), false); /*VIS*/
+                        if (idx == 0)
+                            DSA_VIS_BT_SET_ROOT(k_vis_tree, node, false); /*VIS*/
+                        else
+                            DSA_VIS_BT_LINK(k_vis_tree, vis_nodes[(idx - 1) / 2], ((idx & 1U) == 0U), node, false); /*VIS*/
+                        vis_refresh_index(idx, step);
+                    }
+                    void vis_refresh_index(size_t idx, bool step)
+                    {
+                        if (idx >= vis_nodes.size())
+                            return;
+                        VisualNode *node = vis_nodes[idx];
+                        if (!node)
+                            return;
+                        DSA_VIS_BT_SET_NOTE(k_vis_tree, node, std::string("v=") + vis_to_string(data[idx]), step); /*VIS*/
+                    }
+                    void vis_remove_last_index(bool step)
+                    {
+                        if (!size_r || vis_nodes.empty())
+                            return;
+                        size_t last = size_r - 1;
+                        if (last >= vis_nodes.size() || !vis_nodes[last])
+                            return;
+                        VisualNode *node = vis_nodes[last];
+                        DSA_VIS_BT_REMOVE_NODE(k_vis_tree, node, false); /*VIS*/
+                        DSA_VIS_BT_DESTROY_NODE(k_vis_tree, node, step); /*VIS*/
+                        vis_nodes[last] = nullptr;
+                    }
+                    void swap_indices(size_t i, size_t j, bool step)
+                    {
+                        if (i == j)
+                            return;
+                        DSA_VIS_ARR_MARK(k_vis_arr, static_cast<int>(i), false); /*VIS*/
+                        DSA_VIS_ARR_MARK(k_vis_arr, static_cast<int>(j), false); /*VIS*/
+                        std::swap(data[i], data[j]);
+                        DSA_VIS_ARR_SWAP(k_vis_arr, static_cast<int>(i), static_cast<int>(j), step); /*VIS*/
+                        vis_refresh_index(i, false);
+                        vis_refresh_index(j, false);
+                        DSA_VIS_ARR_UNMARK(k_vis_arr, static_cast<int>(i), false); /*VIS*/
+                        DSA_VIS_ARR_UNMARK(k_vis_arr, static_cast<int>(j), false); /*VIS*/
+                    }
 
                     /**
                      * @brief 上浮操作（sift-up）。
@@ -91,7 +206,7 @@ namespace DSA
                         // 当未到达根节点且当前节点比父节点“大”时循环。
                         while (pos > 0 && comp(data[parent], data[pos]))
                         {
-                            std::swap(data[parent], data[pos]);
+                            swap_indices(static_cast<size_t>(parent), static_cast<size_t>(pos), true);
                             pos = parent;
                             parent = (pos - 1) / 2;
                         }
@@ -117,7 +232,7 @@ namespace DSA
                             if (!comp(data[pos], data[child]))
                                 return;
                             // 交换当前节点和其“更大”的子节点。
-                            std::swap(data[pos], data[child]);
+                            swap_indices(static_cast<size_t>(pos), static_cast<size_t>(child), true);
                             // 继续向下调整。
                             pos = child;
                             child = pos * 2 + 2;
@@ -126,7 +241,7 @@ namespace DSA
                         --child; // child 指向左子节点。
                         // 如果左子节点存在，且比当前节点“大”，则交换。
                         if (child < size_r && comp(data[pos], data[child]))
-                            std::swap(data[child], data[pos]);
+                            swap_indices(static_cast<size_t>(child), static_cast<size_t>(pos), true);
                         return;
                     }
                 };
