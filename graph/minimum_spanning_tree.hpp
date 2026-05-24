@@ -6,6 +6,7 @@
 #include "weighted_graph.hpp"
 #include "../tree/disjoint_set_union.hpp"
 #include "../utils.hpp"
+#include "../vis_trace.hpp"
 namespace DSA
 {
     namespace Graph
@@ -17,7 +18,6 @@ namespace DSA
             using GraphWeighted::WeightedAdjoint;
             using GraphWeighted::WeightedEdge;
             using GraphWeighted::WGraph;
-            using Tree::DisjointSetUnion::DSU;
 
             namespace MinimumSpanningTree
             {
@@ -40,8 +40,10 @@ namespace DSA
                 template <typename T = int>
                 bool Kruskal(const WGraph<T> &g, T &sum, std::vector<T> &chosen)
                 {
-                    chosen.clear();            // 清空结果向量，以防之前有数据。
-                    DSU dsu(g.number_of_node); // 初始化并查集，每个节点自成一个T集合。
+                    chosen.clear(); // 清空结果向量，以防之前有数据。
+                    DSA_VIS_PAUSE(); /*VIS*/
+                    Tree::DisjointSetUnion::DSU dsu(g.number_of_node);
+                    DSA_VIS_RESUME(); /*VIS*/
                     // 创建一个存储边索引的向量，用于排序，而不直接排序原始的边列表。
                     std::vector<int> sortedE(g.E.size());
                     for (int i = 0; i < sortedE.size(); i++)
@@ -50,26 +52,65 @@ namespace DSA
                     std::sort(sortedE.begin(), sortedE.end(), [&](int x, int y)
                               { return g.E[x].w < g.E[y].w; });
                     sum = 0; // 初始化总权重为 0。
+                    std::vector<int> vis_node_id(g.number_of_node + 1);
+                    for (int i = 1; i <= g.number_of_node; ++i)
+                        vis_node_id[i] = i;
+                    auto node_ref = [&](int u)
+                    { return &vis_node_id[u]; };
+                    auto as_string = [](const auto &x)
+                    {
+                        std::ostringstream oss;
+                        oss << x;
+                        return oss.str();
+                    };
+                    /*VIS*/ DSA_VIS_G_INIT("G", g.is_directed);
+                    for (int i = 1; i <= g.number_of_node; ++i)
+                    {
+                        /*VIS*/ DSA_VIS_G_NEW_NODE("G", node_ref(i), i, false);
+                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(i), "black", false);
+                    }
+                    for (auto e : g.E)
+                    {
+                        /*VIS*/ DSA_VIS_G_NEW_EDGE("G", node_ref(e.u), node_ref(e.v), e.w, false);
+                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(e.u), node_ref(e.v), "#64748b", 2, "", false);
+                    }
+                    /*VIS*/ DSA_VIS_G_LAYOUT("G", false);
+                    /*VIS*/ DSA_VIS_MSG("Kruskal 开始：按边权排序后扫描", true);
 
                     // 遍历排序后的边。
                     for (auto id : sortedE)
                     {
                         auto e = g.E[id];
+                        /*VIS*/ DSA_VIS_G_MARK_EDGE("G", node_ref(e.u), node_ref(e.v), false);
+                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(e.u), node_ref(e.v), "#2563eb", 3, "", false);
                         // 查找边 e 的两个端点 u 和 v 所在的集合的代表元。
+                        DSA_VIS_PAUSE(); /*VIS*/
                         int pu = dsu.Find(e.u), pv = dsu.Find(e.v);
+                        DSA_VIS_RESUME(); /*VIS*/
                         // 如果两个端点已经在同一个集合中，说明加入这条边会形成环，因此跳过。
                         if (pu == pv)
+                        {
+                            /*VIS*/ DSA_VIS_MSG("跳过边 " + as_string(e.u) + "-" + as_string(e.v) + "（会成环）", true);
+                            /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(e.u), node_ref(e.v), "#94a3b8", 2, "6,4", false);
+                            /*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", node_ref(e.u), node_ref(e.v), false);
                             continue;
+                        }
                         // 如果不在同一个集合，则选择这条边。
                         sum += e.w;           // 将边的权重累加到总权重中。
-                        dsu.Union(pu, pv);    // 合并两个端点所在的集合。
+                        DSA_VIS_PAUSE();  /*VIS*/
+                        dsu.Union(pu, pv); // 合并两个端点所在的集合。
+                        DSA_VIS_RESUME(); /*VIS*/
                         chosen.push_back(id); // 将这条边的索引加入到结果集中。
+                        /*VIS*/ DSA_VIS_MSG("选中边 " + as_string(e.u) + "-" + as_string(e.v) + "，sum=" + as_string(sum), true);
+                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(e.u), node_ref(e.v), "#16a34a", 3, "", false);
+                        /*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", node_ref(e.u), node_ref(e.v), false);
 
                         // 优化：如果已经找到了 n-1 条边，那么 MST 就已经构建完成，可以提前结束循环
                         if (chosen.size() == g.number_of_node - 1)
                             break;
                     }
                     // 如果最终选择的边数等于 n-1，说明原图是连通的，成功找到了 MST。
+                    /*VIS*/ DSA_VIS_MSG(chosen.size() == g.number_of_node - 1 ? "Kruskal 结束：得到 MST" : "Kruskal 结束：图不连通", false);
                     return chosen.size() == g.number_of_node - 1;
                 }
 
@@ -106,29 +147,101 @@ namespace DSA
                     std::priority_queue<lazy_node> heap; // 创建最小优先队列。
                     // last_updated_edge[v] 存储连接节点 v 到树的那条最小权边的索引。
                     std::vector<int> last_updated_edge(g.number_of_node + 1, -1);
+                    std::vector<char> in_mst(g.number_of_node + 1, false);
+                    std::vector<char> edge_is_mst(g.E.size(), false);
+                    std::vector<int> vis_node_id(g.number_of_node + 1);
+                    for (int i = 1; i <= g.number_of_node; ++i)
+                        vis_node_id[i] = i;
+                    auto node_ref = [&](int u)
+                    { return &vis_node_id[u]; };
+                    auto as_string = [](const auto &x)
+                    {
+                        std::ostringstream oss;
+                        oss << x;
+                        return oss.str();
+                    };
+                    auto node_dis_text = [&](int v) -> std::string
+                    {
+                        return as_string(v) + "\nd=" + (dis[v] >= Infinity<T>() ? std::string("INF") : as_string(dis[v]));
+                    };
+                    auto set_edge_default = [&](int edge_index)
+                    {
+                        if (edge_index < 0 || edge_index >= static_cast<int>(g.E.size()))
+                            return;
+                        auto ee = g.E[edge_index];
+                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(ee.u), node_ref(ee.v), "#64748b", 2, "", false);
+                    };
+                    auto set_edge_mst = [&](int edge_index)
+                    {
+                        if (edge_index < 0 || edge_index >= static_cast<int>(g.E.size()))
+                            return;
+                        auto ee = g.E[edge_index];
+                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(ee.u), node_ref(ee.v), "#16a34a", 4, "", false);
+                    };
+                    /*VIS*/ DSA_VIS_G_INIT("G", g.is_directed);
+                    for (int i = 1; i <= g.number_of_node; ++i)
+                    {
+                        /*VIS*/ DSA_VIS_G_NEW_NODE("G", node_ref(i), i, false);
+                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(i), "black", false);
+                        /*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", node_ref(i), node_dis_text(i), false);
+                    }
+                    for (auto e : g.E)
+                    {
+                        /*VIS*/ DSA_VIS_G_NEW_EDGE("G", node_ref(e.u), node_ref(e.v), e.w, false);
+                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(e.u), node_ref(e.v), "#64748b", 2, "", false);
+                    }
+                    /*VIS*/ DSA_VIS_G_LAYOUT("G", false);
                     dis[1] = 0;        // 从节点 1 开始算法。
                     heap.push({1, 0}); // 将起始节点加入堆中，连接它的“边”权重为0。
+                    /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(1), "blue", false);
+                    /*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", node_ref(1), node_dis_text(1), false);
+                    /*VIS*/ DSA_VIS_MSG("Prim 从节点 1 出发", true);
                     while (!heap.empty())
                     {
                         int u = heap.top().node_id; // 从堆中取出离树最近的节点 u。
                         heap.pop();
-                        dis[u] = 0; // 标记 u 已加入 MST (将距离设为0)。
+                        if (in_mst[u])
+                            continue;
+                        in_mst[u] = true; // 标记 u 已加入 MST。
+                        /*VIS*/ DSA_VIS_G_MARK_NODE("G", node_ref(u), false);
+                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "gray", true);
+                        if (last_updated_edge[u] != -1)
+                        {
+                            edge_is_mst[last_updated_edge[u]] = true;
+                            set_edge_mst(last_updated_edge[u]);
+                        }
 
                         // 遍历 u 的所有邻居 v。
                         for (auto e : g.adj[u])
                         {
                             int v = e.adjvex;
+                            /*VIS*/ DSA_VIS_G_MARK_EDGE("G", node_ref(u), node_ref(v), false);
+                            /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(u), node_ref(v), "#2563eb", 3, "", false);
                             // 如果 v 尚未加入 MST (dis[v]==inf) 或者找到了更短的边来连接 v
-                            if (e.weight < dis[v])
+                            if (!in_mst[v] && e.weight < dis[v])
                             {
                                 // 更新连接 v 的最小边权重和边的索引。
                                 heap.push({v, (dis[v] = e.weight)});
                                 last_updated_edge[v] = e.edge_index;
+                                /*VIS*/ DSA_VIS_MSG("更新节点 " + as_string(v) + " 的连接边，权重=" + as_string(e.weight), true);
+                                /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(v), "green", false);
+                                /*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", node_ref(v), node_dis_text(v), false);
                             }
+                            else
+                            {
+                                if (!edge_is_mst[e.edge_index])
+                                    set_edge_default(e.edge_index);
+                            }
+                            /*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", node_ref(u), node_ref(v), false);
+                            if (edge_is_mst[e.edge_index])
+                                set_edge_mst(e.edge_index);
+                            else
+                                set_edge_default(e.edge_index);
                         }
                         // “懒惰删除”：丢弃堆中过时的条目，即那些节点的距离已经被更短的边更新过。
                         while (!heap.empty() && dis[heap.top().node_id] != heap.top().lazy_dis)
                             heap.pop();
+                        /*VIS*/ DSA_VIS_G_UNMARK_NODE("G", node_ref(u), false);
                     }
                     sum = 0; // 初始化总权重。
                     // 遍历 last_updated_edge 数组来构建最终的 MST。
@@ -139,6 +252,7 @@ namespace DSA
                             sum += g.E[c].w;     // 累加权重。
                         }
                     // 如果最终选择的边数等于 n-1，说明原图是连通的，成功找到了 MST。
+                    /*VIS*/ DSA_VIS_MSG(chosen.size() == g.number_of_node - 1 ? "Prim 结束：得到 MST" : "Prim 结束：图不连通", false);
                     return chosen.size() == g.number_of_node - 1;
                 }
 

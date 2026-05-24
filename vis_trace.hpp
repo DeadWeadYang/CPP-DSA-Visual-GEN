@@ -34,14 +34,18 @@ namespace DSA
                 out_.open(path, std::ios::out | std::ios::trunc);
                 active_ = out_.is_open();
                 seq_ = 0;
+                pause_depth_ = 0;
                 current_ctx_ = "default";
                 initialized_arrays_.clear();
                 initialized_btrees_.clear();
                 initialized_trees_.clear();
+                initialized_graphs_.clear();
                 btree_node_ids_.clear();
                 tree_node_ids_.clear();
+                graph_node_ids_.clear();
                 btree_node_seq_ = 0;
                 tree_node_seq_ = 0;
+                graph_node_seq_ = 0;
             }
 
             void End()
@@ -50,16 +54,34 @@ namespace DSA
                     out_.close();
                 active_ = false;
                 seq_ = 0;
+                pause_depth_ = 0;
                 initialized_arrays_.clear();
                 initialized_btrees_.clear();
                 initialized_trees_.clear();
+                initialized_graphs_.clear();
                 btree_node_ids_.clear();
                 tree_node_ids_.clear();
+                graph_node_ids_.clear();
                 btree_node_seq_ = 0;
                 tree_node_seq_ = 0;
+                graph_node_seq_ = 0;
             }
 
             bool IsActive() const noexcept { return active_; }
+            bool IsPaused() const noexcept { return pause_depth_ > 0; }
+            void Pause() noexcept
+            {
+                if (!active_)
+                    return;
+                ++pause_depth_;
+            }
+            void Resume() noexcept
+            {
+                if (!active_)
+                    return;
+                if (pause_depth_ > 0)
+                    --pause_depth_;
+            }
 
             void SetArrayNames(std::string primary_name, std::string buffer_name = "B")
             {
@@ -446,6 +468,182 @@ namespace DSA
                 WriteEvent("tree", "show_node", obj, args.str(), step, loc);
             }
 
+            void Message(const std::string &text, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"text\":\"" << Escape(text) << "\"}";
+                WriteEvent("meta", "msg", "_", args.str(), step, loc);
+            }
+
+            void EnsureGraphInit(const std::string &obj, bool directed, SourceLoc loc)
+            {
+                if (!active_)
+                    return;
+                const std::string scoped = ScopedObjKey(obj);
+                if (initialized_graphs_.count(scoped))
+                    return;
+                initialized_graphs_.insert(scoped);
+                std::ostringstream args;
+                args << "{\"directed\":" << (directed ? "true" : "false") << "}";
+                WriteEvent("graph", "init", obj, args.str(), false, loc);
+            }
+
+            template <typename NodePtr, typename V>
+            void GraphNewNode(const std::string &obj, NodePtr node, const V &value, SourceLoc loc, bool step = true)
+            {
+                if (!active_ || !node)
+                    return;
+                std::ostringstream args;
+                args << "{\"id\":\"" << Escape(GetOrCreateGraphNodeId(static_cast<const void *>(node))) << "\""
+                     << ",\"value\":" << JsonValue(value) << "}";
+                WriteEvent("graph", "new_node", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void GraphRemoveNode(const std::string &obj, NodePtr node, SourceLoc loc, bool step = true)
+            {
+                if (!active_ || !node)
+                    return;
+                std::ostringstream args;
+                args << "{\"id\":" << GraphNodeRef(static_cast<const void *>(node)) << "}";
+                WriteEvent("graph", "remove_node", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr, typename V>
+            void GraphSetNodeValue(const std::string &obj, NodePtr node, const V &value, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                std::ostringstream args;
+                args << "{\"id\":" << GraphNodeRef(static_cast<const void *>(node))
+                     << ",\"value\":" << JsonValue(value) << "}";
+                WriteEvent("graph", "set_node_value", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void GraphSetNodeColor(const std::string &obj, NodePtr node, const std::string &color, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                std::ostringstream args;
+                args << "{\"id\":" << GraphNodeRef(static_cast<const void *>(node))
+                     << ",\"color\":\"" << Escape(color) << "\"}";
+                WriteEvent("graph", "set_node_color", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void GraphMarkNode(const std::string &obj, NodePtr node, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                std::ostringstream args;
+                args << "{\"id\":" << GraphNodeRef(static_cast<const void *>(node)) << "}";
+                WriteEvent("graph", "mark_node", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void GraphUnmarkNode(const std::string &obj, NodePtr node, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                std::ostringstream args;
+                args << "{\"id\":" << GraphNodeRef(static_cast<const void *>(node)) << "}";
+                WriteEvent("graph", "unmark_node", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtrU, typename NodePtrV, typename W>
+            void GraphNewEdge(const std::string &obj, NodePtrU from, NodePtrV to, const W &label, SourceLoc loc, bool step = true)
+            {
+                if (!active_ || !from || !to)
+                    return;
+                std::ostringstream args;
+                args << "{\"from\":" << GraphNodeRef(static_cast<const void *>(from))
+                     << ",\"to\":" << GraphNodeRef(static_cast<const void *>(to))
+                     << ",\"label\":" << JsonValue(label) << "}";
+                WriteEvent("graph", "new_edge", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtrU, typename NodePtrV>
+            void GraphRemoveEdge(const std::string &obj, NodePtrU from, NodePtrV to, SourceLoc loc, bool step = true)
+            {
+                if (!active_ || !from || !to)
+                    return;
+                std::ostringstream args;
+                args << "{\"from\":" << GraphNodeRef(static_cast<const void *>(from))
+                     << ",\"to\":" << GraphNodeRef(static_cast<const void *>(to)) << "}";
+                WriteEvent("graph", "remove_edge", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtrU, typename NodePtrV, typename W>
+            void GraphSetEdgeLabel(const std::string &obj, NodePtrU from, NodePtrV to, const W &label, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !from || !to)
+                    return;
+                std::ostringstream args;
+                args << "{\"from\":" << GraphNodeRef(static_cast<const void *>(from))
+                     << ",\"to\":" << GraphNodeRef(static_cast<const void *>(to))
+                     << ",\"label\":" << JsonValue(label) << "}";
+                WriteEvent("graph", "set_edge_label", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtrU, typename NodePtrV, typename W>
+            void GraphSetEdgeWeight(const std::string &obj, NodePtrU from, NodePtrV to, const W &weight, SourceLoc loc, bool step = false)
+            {
+                GraphSetEdgeLabel(obj, from, to, weight, loc, step);
+            }
+
+            template <typename NodePtrU, typename NodePtrV>
+            void GraphSetEdgeStyle(
+                const std::string &obj,
+                NodePtrU from,
+                NodePtrV to,
+                const std::string &color,
+                int width,
+                const std::string &dash,
+                SourceLoc loc,
+                bool step = false)
+            {
+                if (!active_ || !from || !to)
+                    return;
+                std::ostringstream args;
+                args << "{\"from\":" << GraphNodeRef(static_cast<const void *>(from))
+                     << ",\"to\":" << GraphNodeRef(static_cast<const void *>(to))
+                     << ",\"color\":" << JsonValue(color)
+                     << ",\"width\":" << width
+                     << ",\"dash\":" << JsonValue(dash) << "}";
+                WriteEvent("graph", "set_edge_style", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtrU, typename NodePtrV>
+            void GraphMarkEdge(const std::string &obj, NodePtrU from, NodePtrV to, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !from || !to)
+                    return;
+                std::ostringstream args;
+                args << "{\"from\":" << GraphNodeRef(static_cast<const void *>(from))
+                     << ",\"to\":" << GraphNodeRef(static_cast<const void *>(to)) << "}";
+                WriteEvent("graph", "mark_edge", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtrU, typename NodePtrV>
+            void GraphUnmarkEdge(const std::string &obj, NodePtrU from, NodePtrV to, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !from || !to)
+                    return;
+                std::ostringstream args;
+                args << "{\"from\":" << GraphNodeRef(static_cast<const void *>(from))
+                     << ",\"to\":" << GraphNodeRef(static_cast<const void *>(to)) << "}";
+                WriteEvent("graph", "unmark_edge", obj, args.str(), step, loc);
+            }
+            void GraphForceLayout(const std::string &obj, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                WriteEvent("graph", "force_layout", obj, "{}", step, loc);
+            }
+
         private:
             Logger() = default;
 
@@ -483,6 +681,24 @@ namespace DSA
                 if (!node)
                     return "null";
                 return std::string("\"") + Escape(GetOrCreateTreeNodeId(node)) + "\"";
+            }
+
+            std::string &GetOrCreateGraphNodeId(const void *node)
+            {
+                auto it = graph_node_ids_.find(node);
+                if (it != graph_node_ids_.end())
+                    return it->second;
+                std::ostringstream oss;
+                oss << "g" << (++graph_node_seq_);
+                auto inserted = graph_node_ids_.emplace(node, oss.str());
+                return inserted.first->second;
+            }
+
+            std::string GraphNodeRef(const void *node)
+            {
+                if (!node)
+                    return "null";
+                return std::string("\"") + Escape(GetOrCreateGraphNodeId(node)) + "\"";
             }
             std::string ScopedObjKey(const std::string &obj) const
             {
@@ -574,7 +790,7 @@ namespace DSA
                 bool step,
                 SourceLoc loc)
             {
-                if (!out_.is_open())
+                if (!out_.is_open() || pause_depth_ > 0)
                     return;
                 out_ << "{\"seq\":" << (++seq_)
                      << ",\"ctx\":\"" << Escape(current_ctx_.empty() ? std::string("default") : current_ctx_) << "\""
@@ -592,16 +808,20 @@ namespace DSA
             bool active_ = false;
             std::ofstream out_;
             std::size_t seq_ = 0;
+            int pause_depth_ = 0;
             std::string current_ctx_ = "default";
             std::string primary_name_ = "A";
             std::string buffer_name_ = "B";
             std::unordered_set<std::string> initialized_arrays_;
             std::unordered_set<std::string> initialized_btrees_;
             std::unordered_set<std::string> initialized_trees_;
+            std::unordered_set<std::string> initialized_graphs_;
             std::unordered_map<const void *, std::string> btree_node_ids_;
             std::unordered_map<const void *, std::string> tree_node_ids_;
+            std::unordered_map<const void *, std::string> graph_node_ids_;
             std::size_t btree_node_seq_ = 0;
             std::size_t tree_node_seq_ = 0;
+            std::size_t graph_node_seq_ = 0;
         public:
             void SetContext(const std::string &ctx_name)
             {
@@ -628,6 +848,8 @@ namespace DSA
 #define DSA_VIS_END() ::DSA::Vis::Logger::Global().End()
 #define DSA_VIS_SET_ARRAY_OBJECTS(primary_name, buffer_name) ::DSA::Vis::Logger::Global().SetArrayNames((primary_name), (buffer_name))
 #define DSA_VIS_CTX(ctx_name) ::DSA::Vis::Logger::Global().SetContext((ctx_name))
+#define DSA_VIS_PAUSE() ::DSA::Vis::Logger::Global().Pause()
+#define DSA_VIS_RESUME() ::DSA::Vis::Logger::Global().Resume()
 #define DSA_VIS_LOC ::DSA::Vis::SourceLoc{__FILE__, __LINE__, __func__}
 #define DSA_VIS_ARR_INIT(obj, first, last) ::DSA::Vis::Logger::Global().EnsureArrayInit((obj), (first), (last), DSA_VIS_LOC)
 #define DSA_VIS_ARR_FOCUS(obj, l, r, step) ::DSA::Vis::Logger::Global().Focus((obj), (l), (r), DSA_VIS_LOC, (step))
@@ -662,11 +884,29 @@ namespace DSA
 #define DSA_VIS_TREE_UNMARK(obj, node, step) ::DSA::Vis::Logger::Global().TreeUnmark((obj), (node), DSA_VIS_LOC, (step))
 #define DSA_VIS_TREE_HIDE_NODE(obj, node, step) ::DSA::Vis::Logger::Global().TreeHideNode((obj), (node), DSA_VIS_LOC, (step))
 #define DSA_VIS_TREE_SHOW_NODE(obj, node, step) ::DSA::Vis::Logger::Global().TreeShowNode((obj), (node), DSA_VIS_LOC, (step))
+#define DSA_VIS_MSG(text, step) ::DSA::Vis::Logger::Global().Message((text), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_INIT(obj, directed) ::DSA::Vis::Logger::Global().EnsureGraphInit((obj), (directed), DSA_VIS_LOC)
+#define DSA_VIS_G_NEW_NODE(obj, node, value, step) ::DSA::Vis::Logger::Global().GraphNewNode((obj), (node), (value), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_REMOVE_NODE(obj, node, step) ::DSA::Vis::Logger::Global().GraphRemoveNode((obj), (node), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_SET_NODE_VALUE(obj, node, value, step) ::DSA::Vis::Logger::Global().GraphSetNodeValue((obj), (node), (value), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_SET_NODE_COLOR(obj, node, color, step) ::DSA::Vis::Logger::Global().GraphSetNodeColor((obj), (node), (color), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_MARK_NODE(obj, node, step) ::DSA::Vis::Logger::Global().GraphMarkNode((obj), (node), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_UNMARK_NODE(obj, node, step) ::DSA::Vis::Logger::Global().GraphUnmarkNode((obj), (node), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_NEW_EDGE(obj, from, to, label, step) ::DSA::Vis::Logger::Global().GraphNewEdge((obj), (from), (to), (label), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_REMOVE_EDGE(obj, from, to, step) ::DSA::Vis::Logger::Global().GraphRemoveEdge((obj), (from), (to), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_SET_EDGE_LABEL(obj, from, to, label, step) ::DSA::Vis::Logger::Global().GraphSetEdgeLabel((obj), (from), (to), (label), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_SET_EDGE_WEIGHT(obj, from, to, weight, step) ::DSA::Vis::Logger::Global().GraphSetEdgeWeight((obj), (from), (to), (weight), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_SET_EDGE_STYLE(obj, from, to, color, width, dash, step) ::DSA::Vis::Logger::Global().GraphSetEdgeStyle((obj), (from), (to), (color), (width), (dash), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_MARK_EDGE(obj, from, to, step) ::DSA::Vis::Logger::Global().GraphMarkEdge((obj), (from), (to), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_UNMARK_EDGE(obj, from, to, step) ::DSA::Vis::Logger::Global().GraphUnmarkEdge((obj), (from), (to), DSA_VIS_LOC, (step))
+#define DSA_VIS_G_LAYOUT(obj, step) ::DSA::Vis::Logger::Global().GraphForceLayout((obj), DSA_VIS_LOC, (step))
 #else
 #define DSA_VIS_BEGIN(path) ((void)0)
 #define DSA_VIS_END() ((void)0)
 #define DSA_VIS_SET_ARRAY_OBJECTS(primary_name, buffer_name) ((void)0)
 #define DSA_VIS_CTX(ctx_name) ((void)0)
+#define DSA_VIS_PAUSE() ((void)0)
+#define DSA_VIS_RESUME() ((void)0)
 #define DSA_VIS_LOC ((void)0)
 #define DSA_VIS_ARR_INIT(obj, first, last) ((void)0)
 #define DSA_VIS_ARR_FOCUS(obj, l, r, step) ((void)0)
@@ -701,4 +941,20 @@ namespace DSA
 #define DSA_VIS_TREE_UNMARK(obj, node, step) ((void)0)
 #define DSA_VIS_TREE_HIDE_NODE(obj, node, step) ((void)0)
 #define DSA_VIS_TREE_SHOW_NODE(obj, node, step) ((void)0)
+#define DSA_VIS_MSG(text, step) ((void)0)
+#define DSA_VIS_G_INIT(obj, directed) ((void)0)
+#define DSA_VIS_G_NEW_NODE(obj, node, value, step) ((void)0)
+#define DSA_VIS_G_REMOVE_NODE(obj, node, step) ((void)0)
+#define DSA_VIS_G_SET_NODE_VALUE(obj, node, value, step) ((void)0)
+#define DSA_VIS_G_SET_NODE_COLOR(obj, node, color, step) ((void)0)
+#define DSA_VIS_G_MARK_NODE(obj, node, step) ((void)0)
+#define DSA_VIS_G_UNMARK_NODE(obj, node, step) ((void)0)
+#define DSA_VIS_G_NEW_EDGE(obj, from, to, label, step) ((void)0)
+#define DSA_VIS_G_REMOVE_EDGE(obj, from, to, step) ((void)0)
+#define DSA_VIS_G_SET_EDGE_LABEL(obj, from, to, label, step) ((void)0)
+#define DSA_VIS_G_SET_EDGE_WEIGHT(obj, from, to, weight, step) ((void)0)
+#define DSA_VIS_G_SET_EDGE_STYLE(obj, from, to, color, width, dash, step) ((void)0)
+#define DSA_VIS_G_MARK_EDGE(obj, from, to, step) ((void)0)
+#define DSA_VIS_G_UNMARK_EDGE(obj, from, to, step) ((void)0)
+#define DSA_VIS_G_LAYOUT(obj, step) ((void)0)
 #endif
