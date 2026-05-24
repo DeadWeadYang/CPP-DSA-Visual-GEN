@@ -138,6 +138,7 @@ namespace DSA
                             // balance_factor = right_height - left_heght
                             if (!parent)
                                 return;
+                            /*VIS*/ DSA_VIS_MSG("AVL 回溯检查平衡因子", false);
                             bool to_right;
                             // 循环从修改点的父节点开始，一直向上检查到根（的父节点，即header）。
                             while (parent != this->end_ptr())
@@ -150,6 +151,7 @@ namespace DSA
                                     parent = parent->parent;
                                     continue;
                                 }
+                                /*VIS*/ DSA_VIS_MSG(std::string("AVL 失衡：bf=") + std::to_string(pbf), true);
                                 // --- 如果代码执行到这里，说明parent节点不平衡，需要旋转 ---
 
                                 // `node` 是 `parent` 的较高一侧的子节点。
@@ -160,6 +162,7 @@ namespace DSA
                                 // 如果parent和node的失衡方向相反 (pbf和nbf异号)，则为双旋转情况。
                                 if (nbf * pbf < 0)
                                 {
+                                    /*VIS*/ DSA_VIS_MSG("AVL 双旋第一步：对子节点旋转", true);
                                     // 双旋转的第一步：对`node`进行一次反向旋转，将其转换为单旋转的情况。
                                     // here, balance_factor of node can only be -1 or 1
                                     // in this case, the higher child of node and the higher child (aka node) of parent are in different direction
@@ -171,6 +174,7 @@ namespace DSA
                                 // 单旋转或双旋转的第二步：对`parent`进行旋转。
                                 // now the higher child of (new)node and the higher child (aka (new)node) of parent are in the same direction
                                 this->rotate(parent, to_right = (pbf < 0)); /*VIS*/ (to_right ? DSA_VIS_BT_ROTATE_RIGHT("T", parent, true) : DSA_VIS_BT_ROTATE_LEFT("T", parent, true));
+                                /*VIS*/ DSA_VIS_MSG("AVL 旋转修复完成一轮", false);
                                 // `parent`指针指向的节点在旋转后已成为子节点。
                                 // `parent->parent` 现在指向整个旋转操作完成后的新子树的根
                                 node = parent->parent;
@@ -186,6 +190,7 @@ namespace DSA
                         Node *createNodeInternal(const T &v) override
                         {
                             Node *node = set_height(Base::createNodeInternal(v), 1); /*VIS*/ DSA_VIS_BT_SET_NOTE("T", node, "h=1", false);
+                            /*VIS*/ DSA_VIS_MSG("AVL 新节点高度初始化为 1", false);
                             return node;
                         }
                         // 检查全树是否满足AVL属性的辅助函数，用于调试和验证。

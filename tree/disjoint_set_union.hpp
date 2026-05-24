@@ -55,6 +55,7 @@ namespace DSA
                         vis_nodes[i].label = i;
                     vis_super_root.label = 0;
                     vis_init();
+                    DSA_VIS_MSG(std::string("DSU 初始化：n=") + std::to_string(number_of_node), true); /*VIS*/
                 }
                 /**
                  * @brief 递归实现的 Find 操作，带有路径压缩优化。
@@ -73,6 +74,7 @@ namespace DSA
                     int root = FindRecursive(old_parent);
                     if (parent[x] != root)
                     {
+                        DSA_VIS_MSG(std::string("路径压缩：") + std::to_string(x) + " -> " + std::to_string(root), false); /*VIS*/
                         parent[x] = root;
                         vis_reparent(x, root, false); /*VIS*/
                         vis_update_node_note(x, false); /*VIS*/
@@ -112,7 +114,11 @@ namespace DSA
                 {
                     x = Find(x), y = Find(y);
                     if (x == y)
+                    {
+                        DSA_VIS_MSG(std::string("Union 跳过：") + std::to_string(x) + " 与 " + std::to_string(y) + " 已连通", true); /*VIS*/
                         return;
+                    }
+                    DSA_VIS_MSG(std::string("UnionRandomly：合并根 ") + std::to_string(x) + " -> " + std::to_string(y), true); /*VIS*/
                     vis_mark_node(x, false); /*VIS*/
                     vis_mark_node(y, false); /*VIS*/
                     parent[x] = y;
@@ -134,11 +140,16 @@ namespace DSA
                 {
                     x = Find(x), y = Find(y);// 找到各自的根。
                     if (x == y)
+                    {
+                        DSA_VIS_MSG(std::string("UnionByRank 跳过：") + std::to_string(x) + " 与 " + std::to_string(y) + " 已连通", true); /*VIS*/
                         return;
+                    }
+                    DSA_VIS_MSG(std::string("UnionByRank：尝试合并根 ") + std::to_string(x) + " 与 " + std::to_string(y), true); /*VIS*/
                     vis_mark_node(x, false); /*VIS*/
                     vis_mark_node(y, false); /*VIS*/
                     if (rnk[x] > rnk[y])// 确保 x 是秩较小的树的根。
                         std::swap(x, y);
+                    DSA_VIS_MSG(std::string("按秩合并：") + std::to_string(x) + " -> " + std::to_string(y), false); /*VIS*/
                     parent[x] = y;// 将秩小的树接到秩大的树下。
                     vis_reparent(x, y, true); /*VIS*/
                     size[y] += size[x];
@@ -160,11 +171,16 @@ namespace DSA
                 {
                     x = Find(x), y = Find(y);// 找到各自的根。
                     if (x == y)
+                    {
+                        DSA_VIS_MSG(std::string("UnionBySize 跳过：") + std::to_string(x) + " 与 " + std::to_string(y) + " 已连通", true); /*VIS*/
                         return;
+                    }
+                    DSA_VIS_MSG(std::string("UnionBySize：尝试合并根 ") + std::to_string(x) + " 与 " + std::to_string(y), true); /*VIS*/
                     vis_mark_node(x, false); /*VIS*/
                     vis_mark_node(y, false); /*VIS*/
                     if (size[x] > size[y])// 确保 x 是较小集合的根。
                         std::swap(x, y);
+                    DSA_VIS_MSG(std::string("按大小合并：") + std::to_string(x) + " -> " + std::to_string(y), false); /*VIS*/
                     parent[x] = y;// 将小集合接到大集合下。
                     vis_reparent(x, y, true); /*VIS*/
                     size[y] += size[x];// 更新合并后集合的大小。

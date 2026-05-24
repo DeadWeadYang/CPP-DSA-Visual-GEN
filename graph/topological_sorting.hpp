@@ -84,7 +84,7 @@ namespace DSA
                         int u = q.front(); // 从队列中取出一个入度为 0 的节点。
                         q.pop();
                         order.push_back(u); // 将该节点加入拓扑序列。
-                        /*VIS*/ DSA_VIS_MSG("出队节点 " + as_string(u), true);
+                        /*VIS*/ DSA_VIS_MSG("出队节点 " + as_string(u) + "，加入拓扑序第 " + as_string(order.size()), true);
                         /*VIS*/ DSA_VIS_G_MARK_NODE("G", node_ref(u), false);
                         /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "blue", false);
 
@@ -95,6 +95,7 @@ namespace DSA
                             /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(u), node_ref(v), "#2563eb", 3, "", false);
                             // 将 v 的入度减 1，因为 u 已经被处理。
                             --ind[v];
+                            /*VIS*/ DSA_VIS_MSG("边 " + as_string(u) + "->" + as_string(v) + " 处理后入度变为 " + as_string(ind[v]), false);
                             // 如果 v 的入度变为 0，说明它的所有前驱节点都已处理完毕，可以入队了。
                             if (!ind[v])
                             {

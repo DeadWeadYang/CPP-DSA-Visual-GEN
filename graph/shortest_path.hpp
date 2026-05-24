@@ -104,6 +104,7 @@ namespace DSA
                                     dis[i][j] = std::min(dis[i][j], dis[i][k] + dis[k][j]); // 更新 dis[i][j]：取 (原来的 i到j 的距离) 和 (经由k中转的距离) 中的较小者;这就是 Floyd 算法的松弛操作。
                                     if (dis[i][j] != old_dis)
                                     {
+                                        vis_sync_dis_matrix(false); /*VIS*/
                                         /*VIS*/ DSA_VIS_MSG(
                                             "更新 dist[" + as_string(i) + "][" + as_string(j) + "]："
                                                 + (old_dis >= Infinity<T>() ? std::string("INF") : as_string(old_dis))
@@ -111,7 +112,6 @@ namespace DSA
                                             true);
                                     }
                                 }
-                        vis_sync_dis_matrix(false); /*VIS*/
                         /*VIS*/ DSA_VIS_G_UNMARK_NODE("G", node_ref(k), false);
                         /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(k), "gray", false);
                     }

@@ -88,6 +88,7 @@ namespace DSA
                         // 创建一个最小优先队列（最小堆），用于存储树节点。
                         std::priority_queue<Node *, std::vector<Node *>, NodeCompare> heap;
                         init_vis_forest();
+                        DSA_VIS_MSG(std::string("Huffman 构建开始：叶子数=") + std::to_string(weights.size()), true); /*VIS*/
                         for (auto const &kv : weights)
                             // 为每个带权重的标签创建一个叶子节点，并将其推入最小堆。
                         {
@@ -95,6 +96,7 @@ namespace DSA
                             heap.push(leaf);
                             vis_new_node(leaf, false);
                             vis_attach_to_forest(leaf, false);
+                            DSA_VIS_MSG(std::string("加入叶子：label=") + std::to_string(kv.first) + ", w=" + std::to_string(kv.second), false); /*VIS*/
                         }
                         // 循环合并节点，直到堆中只剩下一个节点（即树的根节点）。
                         while (heap.size() > 1)
@@ -104,12 +106,14 @@ namespace DSA
                             heap.pop();
                             Node *pright = heap.top();
                             heap.pop();
+                            DSA_VIS_MSG("取出当前最小的两棵树并合并", true); /*VIS*/
                             vis_mark(pleft, false);
                             vis_mark(pright, false);
                             // 创建一个新的内部节点作为它们的父节点。
                             // 新节点的权重是两个子节点权重之和，标签可任意（此处为0）。
                             Node *pparent = this->createNodeInternal(0, pleft->value().weight + pright->value().weight);
                             vis_new_node(pparent, false);
+                            DSA_VIS_MSG(std::string("新父节点权重=") + std::to_string(pparent->value().weight), false); /*VIS*/
                             // 建立亲子关系。
                             pparent->left() = pleft;
                             pparent->right() = pright;
@@ -135,11 +139,13 @@ namespace DSA
                         }
                         // 计算带权路径长度 (WPL)。
                         WPL = this->empty() ? 0 : calculateWPL(this->root(), 0);
+                        DSA_VIS_MSG(std::string("Huffman 构建结束，WPL=") + std::to_string(WPL), true); /*VIS*/
 
                         // 计算霍夫曼编码。
                         HuffmanCode.clear();
                         if (!this->empty())
                             calculateHuffmanCode(this->root(), "");
+                        DSA_VIS_MSG(std::string("Huffman 编码生成完成，编码数=") + std::to_string(HuffmanCode.size()), false); /*VIS*/
                     }
 
                 protected:

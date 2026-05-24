@@ -81,6 +81,7 @@ namespace DSA
                     for (auto id : sortedE)
                     {
                         auto e = g.E[id];
+                        /*VIS*/ DSA_VIS_MSG("检查边 " + as_string(e.u) + "-" + as_string(e.v) + " (w=" + as_string(e.w) + ")", false);
                         /*VIS*/ DSA_VIS_G_MARK_EDGE("G", node_ref(e.u), node_ref(e.v), false);
                         /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(e.u), node_ref(e.v), "#2563eb", 3, "", false);
                         // 查找边 e 的两个端点 u 和 v 所在的集合的代表元。
@@ -202,12 +203,15 @@ namespace DSA
                         heap.pop();
                         if (in_mst[u])
                             continue;
+                        /*VIS*/ DSA_VIS_MSG("选取当前最近节点 u=" + as_string(u) + "，dis=" + (dis[u] >= Infinity<T>() ? std::string("INF") : as_string(dis[u])), true);
                         in_mst[u] = true; // 标记 u 已加入 MST。
                         /*VIS*/ DSA_VIS_G_MARK_NODE("G", node_ref(u), false);
                         /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "gray", true);
                         if (last_updated_edge[u] != -1)
                         {
                             edge_is_mst[last_updated_edge[u]] = true;
+                            auto me = g.E[last_updated_edge[u]];
+                            /*VIS*/ DSA_VIS_MSG("确认 MST 边 " + as_string(me.u) + "-" + as_string(me.v) + " (w=" + as_string(me.w) + ")", true);
                             set_edge_mst(last_updated_edge[u]);
                         }
 
@@ -215,6 +219,7 @@ namespace DSA
                         for (auto e : g.adj[u])
                         {
                             int v = e.adjvex;
+                            /*VIS*/ DSA_VIS_MSG("尝试用边 " + as_string(u) + "-" + as_string(v) + " 更新节点 " + as_string(v), false);
                             /*VIS*/ DSA_VIS_G_MARK_EDGE("G", node_ref(u), node_ref(v), false);
                             /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(u), node_ref(v), "#2563eb", 3, "", false);
                             // 如果 v 尚未加入 MST (dis[v]==inf) 或者找到了更短的边来连接 v
@@ -229,6 +234,7 @@ namespace DSA
                             }
                             else
                             {
+                                /*VIS*/ DSA_VIS_MSG("不更新节点 " + as_string(v) + "（当前更优）", false);
                                 if (!edge_is_mst[e.edge_index])
                                     set_edge_default(e.edge_index);
                             }

@@ -47,6 +47,7 @@ namespace DSA
                     void push(const T &d)
                     {
                         vis_ensure_init();
+                        DSA_VIS_MSG(std::string("堆插入：") + vis_to_string(d), true); /*VIS*/
                         // 如果底层vector容量足够，直接在逻辑末尾放置元素，否则扩展向量。
                         if (size_r == data.size())
                             data.push_back(d);
@@ -57,6 +58,7 @@ namespace DSA
                         vis_sync_array(false);
                         // 对新加入的元素执行上浮操作，并增加堆的逻辑大小。
                         adjustUp(static_cast<int>(size_r - 1));
+                        DSA_VIS_MSG("上浮完成", false); /*VIS*/
                         // equivalent to std::push_heap
                     }
                     /**
@@ -71,6 +73,7 @@ namespace DSA
                         vis_ensure_init();
                         if (!size_r)
                             return;
+                        DSA_VIS_MSG(std::string("堆弹出堆顶：") + vis_to_string(data[0]), true); /*VIS*/
                         if (size_r == 1)
                         {
                             vis_remove_last_index(false);
@@ -85,6 +88,7 @@ namespace DSA
                         vis_sync_array(false);
                         // 对新的根节点执行下沉操作。
                         adjustDown(0);
+                        DSA_VIS_MSG("下沉完成", false); /*VIS*/
                     }
                     // 释放底层向量中未使用的容量，减少内存占用。
                     void shrink_to_fit()
@@ -203,6 +207,7 @@ namespace DSA
                     void adjustUp(int pos)
                     {
                         int parent = (pos - 1) / 2; // 计算父节点的索引。
+                        DSA_VIS_MSG(std::string("开始上浮：idx=") + std::to_string(pos), false); /*VIS*/
                         // 当未到达根节点且当前节点比父节点“大”时循环。
                         while (pos > 0 && comp(data[parent], data[pos]))
                         {
@@ -221,6 +226,7 @@ namespace DSA
                     void adjustDown(int pos)
                     {
                         int child = pos * 2 + 2; // 先指向右子节点。
+                        DSA_VIS_MSG(std::string("开始下沉：idx=") + std::to_string(pos), false); /*VIS*/
                         // 当节点至少有右子节点时循环。
                         while (child < size_r)
                         {

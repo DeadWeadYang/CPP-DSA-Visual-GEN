@@ -74,6 +74,7 @@ namespace DSA
 						return oss.str();
 					};
 					vis_stack.push(u);
+					/*VIS*/ DSA_VIS_MSG("DFS 入栈节点 " + as_string(u), false);
 					vis[u] = ++visited;
 					/*VIS*/ DSA_VIS_G_MARK_NODE("G", node_ref(u), false);
 					/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "blue", false);
@@ -83,6 +84,7 @@ namespace DSA
 					for (auto v : g.adj[u])
 						if (!vis[v])
 						{
+							/*VIS*/ DSA_VIS_MSG("DFS 沿边探索 " + as_string(u) + " -> " + as_string(v), false);
 							/*VIS*/ DSA_VIS_G_MARK_EDGE("G", node_ref(u), node_ref(v), false);
 							/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(u), node_ref(v), "#2563eb", 3, "", false);
 							DFS(v);
@@ -90,6 +92,7 @@ namespace DSA
 						}
 
 					vis_stack.pop();
+					/*VIS*/ DSA_VIS_MSG("DFS 回溯离开节点 " + as_string(u), false);
 					/*VIS*/ DSA_VIS_G_UNMARK_NODE("G", node_ref(u), false);
 					/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "gray", false);
 				}
@@ -149,11 +152,13 @@ namespace DSA
 					{
 						u = vis_queue.front();
 						vis_queue.pop();
+						/*VIS*/ DSA_VIS_MSG("BFS 出队节点 " + as_string(u), true);
 						/*VIS*/ DSA_VIS_G_MARK_NODE("G", node_ref(u), false);
 						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "blue", false);
 						for (auto v : g.adj[u])
 							if (!vis[v])
 							{
+								/*VIS*/ DSA_VIS_MSG("BFS 扫描边 " + as_string(u) + " -> " + as_string(v), false);
 								/*VIS*/ DSA_VIS_G_MARK_EDGE("G", node_ref(u), node_ref(v), false);
 								/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(u), node_ref(v), "#2563eb", 3, "", false);
 								vis_queue.push(v);
