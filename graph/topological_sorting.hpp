@@ -48,11 +48,6 @@ namespace DSA
                         ++ind[e.v];
                     // q 是一个队列，用于存放当前入度为 0 的节点。
                     std::queue<int> q;
-                    std::vector<int> vis_node_id(n + 1);
-                    for (int i = 1; i <= n; ++i)
-                        vis_node_id[i] = i;
-                    auto node_ref = [&](int u)
-                    { return &vis_node_id[u]; };
                     auto as_string = [](const auto &x)
                     {
                         std::ostringstream oss;
@@ -62,20 +57,20 @@ namespace DSA
                     /*VIS*/ DSA_VIS_G_INIT("G", true);
                     for (int i = 1; i <= n; ++i)
                     {
-                        /*VIS*/ DSA_VIS_G_NEW_NODE("G", node_ref(i), i, false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(i), "black", false);
+                        /*VIS*/ DSA_VIS_G_NEW_NODE("G", DSA_VIS_NODE(i), i, false);
+                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "black", false);
                     }
                     for (auto e : g.E)
                     {
-                        /*VIS*/ DSA_VIS_G_NEW_EDGE("G", node_ref(e.u), node_ref(e.v), "", false);
-                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(e.u), node_ref(e.v), "#64748b", 2, "", false);
+                        /*VIS*/ DSA_VIS_G_NEW_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "", false);
+                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#64748b", 2, "", false);
                     }
                     // 找到所有初始入度为 0 的节点并入队。
                     for (int i = 1; i <= n; i++)
                         if (!ind[i])
                         {
                             q.push(i);
-                            /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(i), "green", false);
+                            /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "green", false);
                         }
                     /*VIS*/ DSA_VIS_MSG("Kahn 初始化完成：入度 0 节点入队", true);
                     // 主循环，直到队列为空。
@@ -85,14 +80,14 @@ namespace DSA
                         q.pop();
                         order.push_back(u); // 将该节点加入拓扑序列。
                         /*VIS*/ DSA_VIS_MSG("出队节点 " + as_string(u) + "，加入拓扑序第 " + as_string(order.size()), true);
-                        /*VIS*/ DSA_VIS_G_MARK_NODE("G", node_ref(u), false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "blue", false);
+                        /*VIS*/ DSA_VIS_G_MARK_NODE("G", DSA_VIS_NODE(u), false);
+                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "blue", false);
 
                         // 遍历 u 的所有邻接点 v。
                         for (auto v : g.adj[u])
                         {
-                            /*VIS*/ DSA_VIS_G_MARK_EDGE("G", node_ref(u), node_ref(v), false);
-                            /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(u), node_ref(v), "#2563eb", 3, "", false);
+                            /*VIS*/ DSA_VIS_G_MARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
+                            /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), "#2563eb", 3, "", false);
                             // 将 v 的入度减 1，因为 u 已经被处理。
                             --ind[v];
                             /*VIS*/ DSA_VIS_MSG("边 " + as_string(u) + "->" + as_string(v) + " 处理后入度变为 " + as_string(ind[v]), false);
@@ -100,13 +95,13 @@ namespace DSA
                             if (!ind[v])
                             {
                                 q.push(v);
-                                /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(v), "green", false);
+                                /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(v), "green", false);
                                 /*VIS*/ DSA_VIS_MSG("节点 " + as_string(v) + " 入队", true);
                             }
-                            /*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", node_ref(u), node_ref(v), false);
+                            /*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
                         }
-                        /*VIS*/ DSA_VIS_G_UNMARK_NODE("G", node_ref(u), false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "gray", false);
+                        /*VIS*/ DSA_VIS_G_UNMARK_NODE("G", DSA_VIS_NODE(u), false);
+                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "gray", false);
                     }
                     // 检查是否存在环：如果排序后的节点数不等于图的总节点数，说明有节点未被访问，即存在环。
                     not_DAG = (order.size() != n);

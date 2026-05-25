@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -851,6 +852,7 @@ namespace DSA
 #define DSA_VIS_PAUSE() ::DSA::Vis::Logger::Global().Pause()
 #define DSA_VIS_RESUME() ::DSA::Vis::Logger::Global().Resume()
 #define DSA_VIS_LOC ::DSA::Vis::SourceLoc{__FILE__, __LINE__, __func__}
+#define DSA_VIS_NODE(id) reinterpret_cast<const void *>(static_cast<std::uintptr_t>(id))
 #define DSA_VIS_ARR_INIT(obj, first, last) ::DSA::Vis::Logger::Global().EnsureArrayInit((obj), (first), (last), DSA_VIS_LOC)
 #define DSA_VIS_ARR_FOCUS(obj, l, r, step) ::DSA::Vis::Logger::Global().Focus((obj), (l), (r), DSA_VIS_LOC, (step))
 #define DSA_VIS_ARR_SWAP(obj, i, j, step) ::DSA::Vis::Logger::Global().Swap((obj), (i), (j), DSA_VIS_LOC, (step))
@@ -908,6 +910,7 @@ namespace DSA
 #define DSA_VIS_PAUSE() ((void)0)
 #define DSA_VIS_RESUME() ((void)0)
 #define DSA_VIS_LOC ((void)0)
+#define DSA_VIS_NODE(id) ((void*)0)
 #define DSA_VIS_ARR_INIT(obj, first, last) ((void)0)
 #define DSA_VIS_ARR_FOCUS(obj, l, r, step) ((void)0)
 #define DSA_VIS_ARR_SWAP(obj, i, j, step) ((void)0)

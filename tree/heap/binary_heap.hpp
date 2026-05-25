@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <string>
 #include <sstream>
+#include <cstdint>
 #include "../../vis_trace.hpp"
 
 namespace DSA
@@ -103,16 +104,12 @@ namespace DSA
                     std::vector<T> data; // 使用 std::vector 作为堆的底层存储。
                     size_t size_r = 0;   // 堆的逻辑大小，可能小于 `data.size()`。
                     Compare comp;        // 用于比较元素的函数对象。
-                    struct VisualNode
-                    {
-                        int tag = 0;
-                    };
-                    std::deque<VisualNode> vis_pool;
-                    std::vector<VisualNode *> vis_nodes;
-                    VisualNode vis_super_root;
-                    bool vis_ready = false;
                     static constexpr const char *k_vis_arr = "HA";
                     static constexpr const char *k_vis_tree = "HT";
+#ifdef DSA_VIS_ENABLE
+                    bool vis_ready = false;
+                    size_t vis_tree_size = 0;
+#endif
 
                     std::string vis_to_string(const T &value) const
                     {
@@ -124,21 +121,32 @@ namespace DSA
                     {
                         return std::string("i=") + std::to_string(idx);
                     }
+#ifdef DSA_VIS_ENABLE
+                    const void *vis_super_root_ref() const
+                    {
+                        return static_cast<const void *>(this);
+                    }
+                    const void *vis_index_ref(size_t idx) const
+                    {
+                        return reinterpret_cast<const void *>(static_cast<std::uintptr_t>(idx + 1));
+                    }
+#endif
                     void vis_ensure_init()
                     {
+#ifdef DSA_VIS_ENABLE
                         if (vis_ready)
                             return;
                         DSA_VIS_ARR_INIT(k_vis_arr, data.begin(), data.begin() + size_r);          /*VIS*/
                         DSA_VIS_ARR_SYNC(k_vis_arr, data.begin(), data.begin() + size_r, false);   /*VIS*/
                         DSA_VIS_BT_INIT(k_vis_tree);                                                /*VIS*/
-                        DSA_VIS_BT_NEW_NODE(k_vis_tree, &vis_super_root, "heap", false);           /*VIS*/
-                        DSA_VIS_BT_SET_ROOT(k_vis_tree, &vis_super_root, false);                   /*VIS*/
-                        DSA_VIS_BT_DESTROY_NODE(k_vis_tree, &vis_super_root, false);               /*VIS*/
-                        vis_pool.clear();
-                        vis_nodes.clear();
+                        DSA_VIS_BT_NEW_NODE(k_vis_tree, vis_super_root_ref(), "heap", false);      /*VIS*/
+                        DSA_VIS_BT_SET_ROOT(k_vis_tree, vis_super_root_ref(), false);              /*VIS*/
+                        DSA_VIS_BT_DESTROY_NODE(k_vis_tree, vis_super_root_ref(), false);          /*VIS*/
+                        vis_tree_size = 0;
                         for (size_t i = 0; i < size_r; ++i)
                             vis_add_index(i, false);
                         vis_ready = true;
+#endif
                     }
                     void vis_sync_array(bool step)
                     {
@@ -146,43 +154,42 @@ namespace DSA
                     }
                     void vis_add_index(size_t idx, bool step)
                     {
-                        if (idx >= vis_nodes.size())
-                            vis_nodes.resize(idx + 1, nullptr);
-                        if (vis_nodes[idx])
+#ifdef DSA_VIS_ENABLE
+                        if (idx < vis_tree_size)
                         {
                             vis_refresh_index(idx, step);
                             return;
                         }
-                        vis_pool.emplace_back();
-                        VisualNode *node = &vis_pool.back();
-                        vis_nodes[idx] = node;
-                        DSA_VIS_BT_NEW_NODE(k_vis_tree, node, vis_index_label(idx), false); /*VIS*/
-                        if (idx == 0)
-                            DSA_VIS_BT_SET_ROOT(k_vis_tree, node, false); /*VIS*/
-                        else
-                            DSA_VIS_BT_LINK(k_vis_tree, vis_nodes[(idx - 1) / 2], ((idx & 1U) == 0U), node, false); /*VIS*/
+                        for (size_t cur = vis_tree_size; cur <= idx; ++cur)
+                        {
+                            const void *node = vis_index_ref(cur);
+                            DSA_VIS_BT_NEW_NODE(k_vis_tree, node, vis_index_label(cur), false); /*VIS*/
+                            if (cur == 0)
+                                DSA_VIS_BT_SET_ROOT(k_vis_tree, node, false); /*VIS*/
+                            else
+                                DSA_VIS_BT_LINK(k_vis_tree, vis_index_ref((cur - 1) / 2), ((cur & 1U) == 0U), node, false); /*VIS*/
+                            vis_refresh_index(cur, false);
+                        }
+                        vis_tree_size = idx + 1;
                         vis_refresh_index(idx, step);
+#endif
                     }
                     void vis_refresh_index(size_t idx, bool step)
                     {
-                        if (idx >= vis_nodes.size())
+                        if (idx >= size_r)
                             return;
-                        VisualNode *node = vis_nodes[idx];
-                        if (!node)
-                            return;
-                        DSA_VIS_BT_SET_NOTE(k_vis_tree, node, std::string("v=") + vis_to_string(data[idx]), step); /*VIS*/
+                        DSA_VIS_BT_SET_NOTE(k_vis_tree, vis_index_ref(idx), std::string("v=") + vis_to_string(data[idx]), step); /*VIS*/
                     }
                     void vis_remove_last_index(bool step)
                     {
-                        if (!size_r || vis_nodes.empty())
+#ifdef DSA_VIS_ENABLE
+                        if (!size_r || vis_tree_size == 0)
                             return;
                         size_t last = size_r - 1;
-                        if (last >= vis_nodes.size() || !vis_nodes[last])
-                            return;
-                        VisualNode *node = vis_nodes[last];
-                        DSA_VIS_BT_REMOVE_NODE(k_vis_tree, node, false); /*VIS*/
-                        DSA_VIS_BT_DESTROY_NODE(k_vis_tree, node, step); /*VIS*/
-                        vis_nodes[last] = nullptr;
+                        DSA_VIS_BT_REMOVE_NODE(k_vis_tree, vis_index_ref(last), false); /*VIS*/
+                        DSA_VIS_BT_DESTROY_NODE(k_vis_tree, vis_index_ref(last), step); /*VIS*/
+                        vis_tree_size = last;
+#endif
                     }
                     void swap_indices(size_t i, size_t j, bool step)
                     {

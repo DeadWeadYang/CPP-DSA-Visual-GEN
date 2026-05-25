@@ -62,11 +62,8 @@ namespace DSA
 				int visited;
 				std::vector<int> vis;
 				std::stack<int> vis_stack;
-				std::vector<int> vis_node_id;
 				void DFS(int u)
 				{
-					auto node_ref = [&](int x)
-					{ return &vis_node_id[x]; };
 					auto as_string = [](const auto &x)
 					{
 						std::ostringstream oss;
@@ -76,25 +73,25 @@ namespace DSA
 					vis_stack.push(u);
 					/*VIS*/ DSA_VIS_MSG("DFS 入栈节点 " + as_string(u), false);
 					vis[u] = ++visited;
-					/*VIS*/ DSA_VIS_G_MARK_NODE("G", node_ref(u), false);
-					/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "blue", false);
-					/*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", node_ref(u), as_string(u) + "\nord=" + as_string(vis[u]), false);
+					/*VIS*/ DSA_VIS_G_MARK_NODE("G", DSA_VIS_NODE(u), false);
+					/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "blue", false);
+					/*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(u), as_string(u) + "\nord=" + as_string(vis[u]), false);
 					/*VIS*/ DSA_VIS_MSG("DFS 访问节点 " + as_string(u), true);
 
 					for (auto v : g.adj[u])
 						if (!vis[v])
 						{
 							/*VIS*/ DSA_VIS_MSG("DFS 沿边探索 " + as_string(u) + " -> " + as_string(v), false);
-							/*VIS*/ DSA_VIS_G_MARK_EDGE("G", node_ref(u), node_ref(v), false);
-							/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(u), node_ref(v), "#2563eb", 3, "", false);
+							/*VIS*/ DSA_VIS_G_MARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
+							/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), "#2563eb", 3, "", false);
 							DFS(v);
-							/*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", node_ref(u), node_ref(v), false);
+							/*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
 						}
 
 					vis_stack.pop();
 					/*VIS*/ DSA_VIS_MSG("DFS 回溯离开节点 " + as_string(u), false);
-					/*VIS*/ DSA_VIS_G_UNMARK_NODE("G", node_ref(u), false);
-					/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "gray", false);
+					/*VIS*/ DSA_VIS_G_UNMARK_NODE("G", DSA_VIS_NODE(u), false);
+					/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "gray", false);
 				}
 				static void Demo(int n, const std::vector<std::pair<int, int>> &edges, bool directed = false)
 				{
@@ -103,21 +100,16 @@ namespace DSA
 					instance.vis_stack = std::stack<int>();
 					instance.vis = std::vector<int>(n + 1, 0);
 					instance.visited = 0;
-					instance.vis_node_id = std::vector<int>(n + 1);
-					for (int i = 1; i <= n; ++i)
-						instance.vis_node_id[i] = i;
-					auto node_ref = [&](int x)
-					{ return &instance.vis_node_id[x]; };
 					/*VIS*/ DSA_VIS_G_INIT("G", directed);
 					for (int i = 1; i <= n; ++i)
 					{
-						/*VIS*/ DSA_VIS_G_NEW_NODE("G", node_ref(i), i, false);
-						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(i), "black", false);
+						/*VIS*/ DSA_VIS_G_NEW_NODE("G", DSA_VIS_NODE(i), i, false);
+						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "black", false);
 					}
 					for (auto e : instance.g.E)
 					{
-						/*VIS*/ DSA_VIS_G_NEW_EDGE("G", node_ref(e.u), node_ref(e.v), "", false);
-						/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(e.u), node_ref(e.v), "#64748b", 2, "", false);
+						/*VIS*/ DSA_VIS_G_NEW_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "", false);
+						/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#64748b", 2, "", false);
 					}
 					/*VIS*/ DSA_VIS_MSG("DFS Demo 开始", true);
 					instance.DFS(1);
@@ -131,11 +123,8 @@ namespace DSA
 				int visited;
 				std::vector<int> vis;
 				std::queue<int> vis_queue;
-				std::vector<int> vis_node_id;
 				void BFS(int u)
 				{
-					auto node_ref = [&](int x)
-					{ return &vis_node_id[x]; };
 					auto as_string = [](const auto &x)
 					{
 						std::ostringstream oss;
@@ -144,8 +133,8 @@ namespace DSA
 					};
 					vis_queue.push(u);
 					vis[u] = ++visited;
-					/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "green", false);
-					/*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", node_ref(u), as_string(u) + "\nord=" + as_string(vis[u]), false);
+					/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "green", false);
+					/*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(u), as_string(u) + "\nord=" + as_string(vis[u]), false);
 					/*VIS*/ DSA_VIS_MSG("BFS 起点入队 " + as_string(u), true);
 
 					while (!vis_queue.empty())
@@ -153,23 +142,23 @@ namespace DSA
 						u = vis_queue.front();
 						vis_queue.pop();
 						/*VIS*/ DSA_VIS_MSG("BFS 出队节点 " + as_string(u), true);
-						/*VIS*/ DSA_VIS_G_MARK_NODE("G", node_ref(u), false);
-						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "blue", false);
+						/*VIS*/ DSA_VIS_G_MARK_NODE("G", DSA_VIS_NODE(u), false);
+						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "blue", false);
 						for (auto v : g.adj[u])
 							if (!vis[v])
 							{
 								/*VIS*/ DSA_VIS_MSG("BFS 扫描边 " + as_string(u) + " -> " + as_string(v), false);
-								/*VIS*/ DSA_VIS_G_MARK_EDGE("G", node_ref(u), node_ref(v), false);
-								/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(u), node_ref(v), "#2563eb", 3, "", false);
+								/*VIS*/ DSA_VIS_G_MARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
+								/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), "#2563eb", 3, "", false);
 								vis_queue.push(v);
 								vis[v] = ++visited;
-								/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(v), "green", false);
-								/*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", node_ref(v), as_string(v) + "\nord=" + as_string(vis[v]), false);
+								/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(v), "green", false);
+								/*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(v), as_string(v) + "\nord=" + as_string(vis[v]), false);
 								/*VIS*/ DSA_VIS_MSG("BFS 发现并入队 " + as_string(v), true);
-								/*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", node_ref(u), node_ref(v), false);
+								/*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
 							}
-						/*VIS*/ DSA_VIS_G_UNMARK_NODE("G", node_ref(u), false);
-						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(u), "gray", false);
+						/*VIS*/ DSA_VIS_G_UNMARK_NODE("G", DSA_VIS_NODE(u), false);
+						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "gray", false);
 					}
 				}
 				static void Demo(int n, const std::vector<std::pair<int, int>> &edges, bool directed = false)
@@ -179,21 +168,16 @@ namespace DSA
 					instance.vis_queue = std::queue<int>();
 					instance.vis = std::vector<int>(n + 1, 0);
 					instance.visited = 0;
-					instance.vis_node_id = std::vector<int>(n + 1);
-					for (int i = 1; i <= n; ++i)
-						instance.vis_node_id[i] = i;
-					auto node_ref = [&](int x)
-					{ return &instance.vis_node_id[x]; };
 					/*VIS*/ DSA_VIS_G_INIT("G", directed);
 					for (int i = 1; i <= n; ++i)
 					{
-						/*VIS*/ DSA_VIS_G_NEW_NODE("G", node_ref(i), i, false);
-						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", node_ref(i), "black", false);
+						/*VIS*/ DSA_VIS_G_NEW_NODE("G", DSA_VIS_NODE(i), i, false);
+						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "black", false);
 					}
 					for (auto e : instance.g.E)
 					{
-						/*VIS*/ DSA_VIS_G_NEW_EDGE("G", node_ref(e.u), node_ref(e.v), "", false);
-						/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", node_ref(e.u), node_ref(e.v), "#64748b", 2, "", false);
+						/*VIS*/ DSA_VIS_G_NEW_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "", false);
+						/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#64748b", 2, "", false);
 					}
 					/*VIS*/ DSA_VIS_MSG("BFS Demo 开始", true);
 					instance.BFS(1);
