@@ -151,7 +151,7 @@ namespace DSA
                 for (j = i - 1; j >= 0 && tmp < arr[j]; j--)
                 {
                     arr[j + 1] = arr[j]; // 将比tmp大的元素向后移动一位
-                    DSA_SORT_SET_AT("A", arr + j + 1, arr[j + 1], std::string("插入排序右移元素：") + std::to_string(Vis::Index(arr, j)) + " -> " + std::to_string(Vis::Index(arr, j + 1)));
+                    DSA_SORT_MOVE_SET_AT("A", arr + j, arr + j + 1, arr[j + 1], std::string("插入排序右移元素：") + std::to_string(Vis::Index(arr, j)) + " -> " + std::to_string(Vis::Index(arr, j + 1)));
                 }
                 // 循环结束时，j+1 就是tmp的正确插入位置
                 arr[j + 1] = tmp;
@@ -428,14 +428,14 @@ namespace DSA
                         auto written_value = arr[r++];
                         DSA_SORT_VIS_DECL(int write_pos = Vis::BufferIndex(blast);)
                         *(blast++) = written_value;
-                        DSA_SORT_SET_BUFFER_AT("B", blast - 1, written_value, std::string("归并排序：右子区间当前元素更小，写入缓冲区下标 ") + std::to_string(write_pos));
+                        DSA_SORT_MOVE_TO_BUFFER_AT("A", "B", arr + r - 1, blast - 1, written_value, std::string("归并排序：右子区间当前元素更小，写入缓冲区下标 ") + std::to_string(write_pos));
                     }
                     else
                     {
                         auto written_value = arr[l++];
                         DSA_SORT_VIS_DECL(int write_pos = Vis::BufferIndex(blast);)
                         *(blast++) = written_value;
-                        DSA_SORT_SET_BUFFER_AT("B", blast - 1, written_value, std::string("归并排序：左子区间当前元素更小或相等，写入缓冲区下标 ") + std::to_string(write_pos));
+                        DSA_SORT_MOVE_TO_BUFFER_AT("A", "B", arr + l - 1, blast - 1, written_value, std::string("归并排序：左子区间当前元素更小或相等，写入缓冲区下标 ") + std::to_string(write_pos));
                     }
                 }
                 // 将某一半数组中剩余的元素（如果有的话）复制到缓冲区末尾
@@ -446,7 +446,7 @@ namespace DSA
                     {
                         DSA_SORT_VIS_DECL(int write_pos = Vis::BufferIndex(blast);)
                         *(blast++) = arr[l];
-                        DSA_SORT_SET_BUFFER_AT("B", blast - 1, arr[l], std::string("归并排序：左子区间仍有剩余，写入缓冲区下标 ") + std::to_string(write_pos));
+                        DSA_SORT_MOVE_TO_BUFFER_AT("A", "B", arr + l, blast - 1, arr[l], std::string("归并排序：左子区间仍有剩余，写入缓冲区下标 ") + std::to_string(write_pos));
                     }
                 }
                 else
@@ -455,14 +455,14 @@ namespace DSA
                     {
                         DSA_SORT_VIS_DECL(int write_pos = Vis::BufferIndex(blast);)
                         *(blast++) = arr[r];
-                        DSA_SORT_SET_BUFFER_AT("B", blast - 1, arr[r], std::string("归并排序：右子区间仍有剩余，写入缓冲区下标 ") + std::to_string(write_pos));
+                        DSA_SORT_MOVE_TO_BUFFER_AT("A", "B", arr + r, blast - 1, arr[r], std::string("归并排序：右子区间仍有剩余，写入缓冲区下标 ") + std::to_string(write_pos));
                     }
                 }
                 for (int i = 0; i < n; ++i)
                 {
                     DSA_SORT_VIS_DECL(int write_pos = Vis::Index(arr + i);)
                     arr[i] = bfirst[i];
-                    DSA_SORT_SET_AT("A", arr + i, arr[i], std::string("归并排序：将缓冲区结果写回原数组下标 ") + std::to_string(write_pos));
+                    DSA_SORT_MOVE_FROM_BUFFER_AT("B", "A", bfirst + i, arr + i, arr[i], std::string("归并排序：将缓冲区结果写回原数组下标 ") + std::to_string(write_pos));
                 }
                 DSA_SORT_STEP(std::string("归并排序：区间 [") + std::to_string(base_offset) + "," + std::to_string(base_offset + n) + ") 合并完成");
             }
@@ -617,14 +617,14 @@ namespace DSA
                     auto bucket = adapter(arr[i], key_id);
                     auto write_pos = --counts[bucket];
                     buf[write_pos] = arr[i];
-                    DSA_SORT_SET_BUFFER_AT("B", buf.begin() + static_cast<int>(write_pos), arr[i], std::string("基数排序：从右向左保持稳定性，将元素放入桶 ") + std::to_string(bucket) + " 的位置 " + std::to_string(write_pos));
+                    DSA_SORT_MOVE_TO_BUFFER_AT("A", "B", first + i, buf.begin() + static_cast<int>(write_pos), arr[i], std::string("基数排序：从右向左保持稳定性，将元素放入桶 ") + std::to_string(bucket) + " 的位置 " + std::to_string(write_pos));
                 }
 
                 // 4. 复制：将本轮排序后的结果从 buf 复制回原数组
                 for (int i = 0; i < n; ++i)
                 {
                     first[i] = buf[i];
-                    DSA_SORT_SET_AT("A", first + i, first[i], std::string("基数排序：第 ") + std::to_string(key_id) + " 个字节排序后写回下标 " + std::to_string(Vis::Index(first, i)));
+                    DSA_SORT_MOVE_FROM_BUFFER_AT("B", "A", buf.begin() + i, first + i, first[i], std::string("基数排序：第 ") + std::to_string(key_id) + " 个字节排序后写回下标 " + std::to_string(Vis::Index(first, i)));
                 }
                 DSA_SORT_STEP(std::string("基数排序：第 ") + std::to_string(key_id) + " 个字节处理完成，数组按低位到当前位保持有序");
             }
@@ -771,7 +771,7 @@ namespace DSA
                     for (; j >= gap && tmp < arr[j - gap]; j -= gap)
                     {
                         arr[j] = arr[j - gap];
-                        DSA_SORT_SET_AT("A", arr + j, arr[j], std::string("希尔排序：下标 ") + std::to_string(Vis::Index(arr, j - gap)) + " 的元素后移到 " + std::to_string(Vis::Index(arr, j)));
+                        DSA_SORT_MOVE_SET_AT("A", arr + j - gap, arr + j, arr[j], std::string("希尔排序：下标 ") + std::to_string(Vis::Index(arr, j - gap)) + " 的元素后移到 " + std::to_string(Vis::Index(arr, j)));
                     }
                     arr[j] = tmp;
                     DSA_SORT_SET_AT("A", arr + j, arr[j], std::string("希尔排序：暂存元素插入到下标 ") + std::to_string(Vis::Index(arr, j)), j != i);
