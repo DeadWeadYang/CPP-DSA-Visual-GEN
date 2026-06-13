@@ -8,6 +8,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <type_traits>
 #include "binary_tree_basic.hpp"
 #include "../../vis_trace.hpp"
 
@@ -84,7 +85,6 @@ namespace DSA
                         std::priority_queue<Node *, std::vector<Node *>, NodeCompare> heap;
 #ifdef DSA_VIS_ENABLE
                         constexpr const char *kVisObj = "H";
-                        const void *vis_super_root = static_cast<const void *>(this);
                         auto vis_node_text = [](const Node *node) -> std::string {
                             if (!node)
                                 return std::string();
@@ -96,12 +96,9 @@ namespace DSA
                                 oss << "L" << v.label << ":" << v.weight;
                             return oss.str();
                         };
-                        DSA_VIS_TREE_INIT(kVisObj);                                         /*VIS*/
-                        DSA_VIS_TREE_NEW_NODE(kVisObj, vis_super_root, "forest", false);    /*VIS*/
-                        DSA_VIS_TREE_SET_ROOT(kVisObj, vis_super_root, false);               /*VIS*/
-                        DSA_VIS_TREE_HIDE_NODE(kVisObj, vis_super_root, false);              /*VIS*/
+                        DSA_VIS_TREE_INIT(kVisObj); /*VIS*/
 #endif
-                        DSA_VIS_MSG(std::string("Huffman 构建开始：叶子数=") + std::to_string(weights.size()), true); /*VIS*/
+                        DSA_VIS_STEP(std::string("Huffman 构建开始：") + std::to_string(weights.size()) + " 个权值各自作为一棵叶子树"); /*VIS*/
                         for (auto const &kv : weights)
                             // 为每个带权重的标签创建一个叶子节点，并将其推入最小堆。
                         {
@@ -109,9 +106,9 @@ namespace DSA
                             heap.push(leaf);
 #ifdef DSA_VIS_ENABLE
                             DSA_VIS_TREE_NEW_NODE(kVisObj, leaf, vis_node_text(leaf), false);      /*VIS*/
-                            DSA_VIS_TREE_ADD_CHILD(kVisObj, vis_super_root, leaf, false);           /*VIS*/
+                            DSA_VIS_TREE_ADD_ROOT(kVisObj, leaf, false);                           /*VIS*/
 #endif
-                            DSA_VIS_MSG(std::string("加入叶子：label=") + std::to_string(kv.first) + ", w=" + std::to_string(kv.second), false); /*VIS*/
+                            DSA_VIS_NOTE(std::string("加入叶子：label=") + std::to_string(kv.first) + ", w=" + vis_value_text(kv.second)); /*VIS*/
                         }
                         // 循环合并节点，直到堆中只剩下一个节点（即树的根节点）。
                         while (heap.size() > 1)
@@ -121,7 +118,7 @@ namespace DSA
                             heap.pop();
                             Node *pright = heap.top();
                             heap.pop();
-                            DSA_VIS_MSG("取出当前最小的两棵树并合并", true); /*VIS*/
+                            DSA_VIS_STEP(std::string("Huffman：取出当前权值最小的两棵树，权值分别为 ") + vis_value_text(pleft->value().weight) + " 和 " + vis_value_text(pright->value().weight)); /*VIS*/
 #ifdef DSA_VIS_ENABLE
                             DSA_VIS_TREE_MARK(kVisObj, pleft, false);   /*VIS*/
                             DSA_VIS_TREE_MARK(kVisObj, pright, false);  /*VIS*/
@@ -132,20 +129,21 @@ namespace DSA
 #ifdef DSA_VIS_ENABLE
                             DSA_VIS_TREE_NEW_NODE(kVisObj, pparent, vis_node_text(pparent), false); /*VIS*/
 #endif
-                            DSA_VIS_MSG(std::string("新父节点权重=") + std::to_string(pparent->value().weight), false); /*VIS*/
+                            DSA_VIS_STEP(std::string("Huffman：创建父节点，权值为两者之和 ") + vis_value_text(pparent->value().weight)); /*VIS*/
                             // 建立亲子关系。
                             pparent->left() = pleft;
                             pparent->right() = pright;
                             pleft->parent = pright->parent = pparent;
 #ifdef DSA_VIS_ENABLE
-                            DSA_VIS_TREE_REMOVE_NODE(kVisObj, pleft, false);                 /*VIS*/
-                            DSA_VIS_TREE_REMOVE_NODE(kVisObj, pright, false);                /*VIS*/
+                            DSA_VIS_TREE_REMOVE_ROOT(kVisObj, pleft, false);                 /*VIS*/
+                            DSA_VIS_TREE_REMOVE_ROOT(kVisObj, pright, false);                /*VIS*/
                             DSA_VIS_TREE_ADD_CHILD(kVisObj, pparent, pleft, false);          /*VIS*/
                             DSA_VIS_TREE_ADD_CHILD(kVisObj, pparent, pright, false);         /*VIS*/
-                            DSA_VIS_TREE_ADD_CHILD(kVisObj, vis_super_root, pparent, true);  /*VIS*/
+                            DSA_VIS_TREE_ADD_ROOT(kVisObj, pparent, false);                  /*VIS*/
                             DSA_VIS_TREE_UNMARK(kVisObj, pleft, false);                      /*VIS*/
                             DSA_VIS_TREE_UNMARK(kVisObj, pright, false);                     /*VIS*/
 #endif
+                            DSA_VIS_STEP("Huffman：两棵子树挂到新父节点下，新树放回森林"); /*VIS*/
 
                             // 将新创建的父节点推回堆中。
                             heap.push(pparent);
@@ -156,24 +154,17 @@ namespace DSA
                             // `release` 方法将堆中的根节点设置为树的根节点。
                             Node *final_root = heap.top();
                             this->release(final_root);
-#ifdef DSA_VIS_ENABLE
-                            DSA_VIS_TREE_SHOW_NODE(kVisObj, vis_super_root, false);              /*VIS*/
-                            DSA_VIS_TREE_SET_NOTE(kVisObj, vis_super_root, "Huffman", false);    /*VIS*/
-                            DSA_VIS_TREE_SET_ROOT(kVisObj, vis_super_root, false);               /*VIS*/
-                            DSA_VIS_TREE_SET_CHILD(kVisObj, vis_super_root, 0, final_root, false); /*VIS*/
-                            DSA_VIS_TREE_HIDE_NODE(kVisObj, vis_super_root, false);              /*VIS*/
-#endif
                             heap.pop();
                         }
                         // 计算带权路径长度 (WPL)。
                         WPL = this->empty() ? 0 : calculateWPL(this->root(), 0);
-                        DSA_VIS_MSG(std::string("Huffman 构建结束，WPL=") + std::to_string(WPL), true); /*VIS*/
+                        DSA_VIS_STEP(std::string("Huffman 构建结束：森林只剩最终根，WPL=") + vis_value_text(WPL)); /*VIS*/
 
                         // 计算霍夫曼编码。
                         HuffmanCode.clear();
                         if (!this->empty())
                             calculateHuffmanCode(this->root(), "");
-                        DSA_VIS_MSG(std::string("Huffman 编码生成完成，编码数=") + std::to_string(HuffmanCode.size()), false); /*VIS*/
+                        DSA_VIS_NOTE(std::string("Huffman 编码生成完成，编码数=") + std::to_string(HuffmanCode.size())); /*VIS*/
                     }
 
                 protected:
@@ -186,6 +177,14 @@ namespace DSA
                 private:
                     T WPL;                                  // 存储带权路径长度 (Weighted Path Length)。
                     std::map<int, std::string> HuffmanCode; // 存储从标签到霍夫曼编码的映射。
+
+                    template <typename U>
+                    std::string vis_value_text(const U &value) const
+                    {
+                        std::ostringstream oss;
+                        oss << value;
+                        return oss.str();
+                    }
 
                     /**
                      * @brief 递归计算树的带权路径长度 (WPL)。

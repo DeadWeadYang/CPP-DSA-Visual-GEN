@@ -4,6 +4,7 @@
 #include <sstream>
 #include "graph_basic.hpp"
 #include "weighted_graph.hpp"
+#include "graph_vis.hpp"
 #include "../vis_trace.hpp"
 namespace DSA
 {
@@ -48,64 +49,74 @@ namespace DSA
                         ++ind[e.v];
                     // q 是一个队列，用于存放当前入度为 0 的节点。
                     std::queue<int> q;
-                    auto as_string = [](const auto &x)
+                    DSA_VIS_DECL(auto as_string = [](const auto &x)
                     {
                         std::ostringstream oss;
                         oss << x;
                         return oss.str();
-                    };
-                    /*VIS*/ DSA_VIS_G_INIT("G", true);
+                    };)
+                    DSA_VIS_ONLY(Vis::InitBasicGraph(g));
+                    /*VIS*/ DSA_VIS_STATE_INIT_VECTOR_LABELED("INDEG", n, "INDEG[v] current indegree", 1, "column = graph node v", false);
                     for (int i = 1; i <= n; ++i)
                     {
-                        /*VIS*/ DSA_VIS_G_NEW_NODE("G", DSA_VIS_NODE(i), i, false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "black", false);
+                        DSA_VIS_ONLY(Vis::SetFlag("INDEG", i, as_string(ind[i])));
+                        /*VIS*/ DSA_VIS_STATE_HISTORY("INDEG", 0, i - 1, ind[i], "init", false);
                     }
-                    for (auto e : g.E)
-                    {
-                        /*VIS*/ DSA_VIS_G_NEW_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "", false);
-                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#64748b", 2, "", false);
-                    }
+                    DSA_VIS_ONLY(Vis::SeqClear("QUEUE"));
+                    DSA_VIS_ONLY(Vis::SeqClear("ORDER"));
                     // 找到所有初始入度为 0 的节点并入队。
                     for (int i = 1; i <= n; i++)
                         if (!ind[i])
                         {
                             q.push(i);
-                            /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "green", false);
+                            DSA_VIS_ONLY(Vis::SeqPush("QUEUE", i));
+                            DSA_VIS_ONLY(Vis::SetNodeColor("G", i, "green"));
                         }
-                    /*VIS*/ DSA_VIS_MSG("Kahn 初始化完成：入度 0 节点入队", true);
+                    /*VIS*/ DSA_VIS_STEP("Kahn 初始化完成：入度 0 的节点全部入队");
                     // 主循环，直到队列为空。
                     while (!q.empty())
                     {
                         int u = q.front(); // 从队列中取出一个入度为 0 的节点。
                         q.pop();
+                        DSA_VIS_ONLY(Vis::SeqPop("QUEUE"));
                         order.push_back(u); // 将该节点加入拓扑序列。
-                        /*VIS*/ DSA_VIS_MSG("出队节点 " + as_string(u) + "，加入拓扑序第 " + as_string(order.size()), true);
-                        /*VIS*/ DSA_VIS_G_MARK_NODE("G", DSA_VIS_NODE(u), false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "blue", false);
+                        DSA_VIS_ONLY(Vis::SeqPush("ORDER", u));
+                        DSA_VIS_ONLY(Vis::ClearFocus("INDEG"));
+                        DSA_VIS_ONLY(Vis::FocusCell("INDEG", u, "write"));
+                        /*VIS*/ DSA_VIS_STEP("Kahn：出队节点 " + as_string(u) + "，加入拓扑序第 " + as_string(order.size()));
+                        DSA_VIS_ONLY(Vis::MarkNode("G", u, "blue"));
 
                         // 遍历 u 的所有邻接点 v。
                         for (auto v : g.adj[u])
                         {
-                            /*VIS*/ DSA_VIS_G_MARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
-                            /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), "#2563eb", 3, "", false);
+                            DSA_VIS_ONLY(Vis::MarkEdge("G", u, v, "", "#2563eb"));
                             // 将 v 的入度减 1，因为 u 已经被处理。
                             --ind[v];
-                            /*VIS*/ DSA_VIS_MSG("边 " + as_string(u) + "->" + as_string(v) + " 处理后入度变为 " + as_string(ind[v]), false);
+                            DSA_VIS_ONLY(Vis::ClearFocus("INDEG"));
+                            DSA_VIS_ONLY(Vis::FocusCell("INDEG", v, "write"));
+                            DSA_VIS_ONLY(Vis::SetFlag("INDEG", v, as_string(ind[v])));
+                            /*VIS*/ DSA_VIS_STATE_HISTORY("INDEG", 0, v - 1, ind[v], "remove " + as_string(u) + "->" + as_string(v), false);
                             // 如果 v 的入度变为 0，说明它的所有前驱节点都已处理完毕，可以入队了。
                             if (!ind[v])
                             {
                                 q.push(v);
-                                /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(v), "green", false);
-                                /*VIS*/ DSA_VIS_MSG("节点 " + as_string(v) + " 入队", true);
+                                DSA_VIS_ONLY(Vis::SeqPush("QUEUE", v));
+                                DSA_VIS_ONLY(Vis::SetNodeColor("G", v, "green"));
+                                /*VIS*/ DSA_VIS_STEP("Kahn：处理边 " + as_string(u) + "->" + as_string(v) + " 后，节点 " + as_string(v) + " 入度为 0，入队");
                             }
-                            /*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
+                            else
+                            {
+                                /*VIS*/ DSA_VIS_STEP("Kahn：处理边 " + as_string(u) + "->" + as_string(v) + " 后，入度变为 " + as_string(ind[v]));
+                            }
+                            DSA_VIS_ONLY(Vis::UnmarkEdge("G", u, v));
                         }
-                        /*VIS*/ DSA_VIS_G_UNMARK_NODE("G", DSA_VIS_NODE(u), false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "gray", false);
+                        DSA_VIS_ONLY(Vis::UnmarkNode("G", u));
+                        DSA_VIS_ONLY(Vis::SetNodeColor("G", u, "gray"));
                     }
                     // 检查是否存在环：如果排序后的节点数不等于图的总节点数，说明有节点未被访问，即存在环。
                     not_DAG = (order.size() != n);
-                    /*VIS*/ DSA_VIS_MSG(not_DAG ? "Kahn 结束：存在环" : "Kahn 结束：得到拓扑序", false);
+                    DSA_VIS_ONLY(Vis::ClearFocus("INDEG"));
+                    /*VIS*/ DSA_VIS_STEP(not_DAG ? "Kahn 结束：仍有节点未入拓扑序，图中存在环" : "Kahn 结束：得到完整拓扑序");
                     return not_DAG;
                 }
                 /**

@@ -5,6 +5,7 @@
 #include <queue>
 #include <tuple>
 #include <sstream>
+#include "graph_vis.hpp"
 #include "../vis_trace.hpp"
 
 namespace DSA
@@ -64,34 +65,24 @@ namespace DSA
 				std::stack<int> vis_stack;
 				void DFS(int u)
 				{
-					auto as_string = [](const auto &x)
-					{
-						std::ostringstream oss;
-						oss << x;
-						return oss.str();
-					};
 					vis_stack.push(u);
-					/*VIS*/ DSA_VIS_MSG("DFS 入栈节点 " + as_string(u), false);
 					vis[u] = ++visited;
-					/*VIS*/ DSA_VIS_G_MARK_NODE("G", DSA_VIS_NODE(u), false);
-					/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "blue", false);
-					/*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(u), as_string(u) + "\nord=" + as_string(vis[u]), false);
-					/*VIS*/ DSA_VIS_MSG("DFS 访问节点 " + as_string(u), true);
+					DSA_VIS_ONLY(Vis::VisitNode("G", u, vis[u], "blue"));
+					/*VIS*/ DSA_VIS_STEP("DFS 访问节点 " + Vis::ToString(u) + "，入栈并记录访问序 " + Vis::ToString(vis[u]));
 
 					for (auto v : g.adj[u])
 						if (!vis[v])
 						{
-							/*VIS*/ DSA_VIS_MSG("DFS 沿边探索 " + as_string(u) + " -> " + as_string(v), false);
-							/*VIS*/ DSA_VIS_G_MARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
-							/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), "#2563eb", 3, "", false);
+							DSA_VIS_ONLY(Vis::MarkEdge("G", u, v, "", "#2563eb"));
+							/*VIS*/ DSA_VIS_STEP("DFS 沿边 " + Vis::ToString(u) + " -> " + Vis::ToString(v) + " 递归探索未访问节点");
 							DFS(v);
-							/*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
+							DSA_VIS_ONLY(Vis::UnmarkEdge("G", u, v));
 						}
 
 					vis_stack.pop();
-					/*VIS*/ DSA_VIS_MSG("DFS 回溯离开节点 " + as_string(u), false);
-					/*VIS*/ DSA_VIS_G_UNMARK_NODE("G", DSA_VIS_NODE(u), false);
-					/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "gray", false);
+					DSA_VIS_ONLY(Vis::UnmarkNode("G", u));
+					DSA_VIS_ONLY(Vis::SetNodeColor("G", u, "gray"));
+					/*VIS*/ DSA_VIS_STEP("DFS 回溯离开节点 " + Vis::ToString(u));
 				}
 				static void Demo(int n, const std::vector<std::pair<int, int>> &edges, bool directed = false)
 				{
@@ -100,20 +91,10 @@ namespace DSA
 					instance.vis_stack = std::stack<int>();
 					instance.vis = std::vector<int>(n + 1, 0);
 					instance.visited = 0;
-					/*VIS*/ DSA_VIS_G_INIT("G", directed);
-					for (int i = 1; i <= n; ++i)
-					{
-						/*VIS*/ DSA_VIS_G_NEW_NODE("G", DSA_VIS_NODE(i), i, false);
-						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "black", false);
-					}
-					for (auto e : instance.g.E)
-					{
-						/*VIS*/ DSA_VIS_G_NEW_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "", false);
-						/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#64748b", 2, "", false);
-					}
-					/*VIS*/ DSA_VIS_MSG("DFS Demo 开始", true);
+					DSA_VIS_ONLY(Vis::InitBasicGraph(instance.g));
+					/*VIS*/ DSA_VIS_STEP("DFS Demo 开始");
 					instance.DFS(1);
-					/*VIS*/ DSA_VIS_MSG("DFS Demo 结束", false);
+					/*VIS*/ DSA_VIS_STEP("DFS Demo 结束");
 				}
 			};
 
@@ -125,40 +106,31 @@ namespace DSA
 				std::queue<int> vis_queue;
 				void BFS(int u)
 				{
-					auto as_string = [](const auto &x)
-					{
-						std::ostringstream oss;
-						oss << x;
-						return oss.str();
-					};
 					vis_queue.push(u);
 					vis[u] = ++visited;
-					/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "green", false);
-					/*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(u), as_string(u) + "\nord=" + as_string(vis[u]), false);
-					/*VIS*/ DSA_VIS_MSG("BFS 起点入队 " + as_string(u), true);
+					DSA_VIS_ONLY(Vis::SetNodeColor("G", u, "green"));
+					DSA_VIS_ONLY(Vis::SetNodeLabel("G", u, Vis::ToString(u) + "\nord=" + Vis::ToString(vis[u])));
+					/*VIS*/ DSA_VIS_STEP("BFS 起点 " + Vis::ToString(u) + " 入队，访问序为 " + Vis::ToString(vis[u]));
 
 					while (!vis_queue.empty())
 					{
 						u = vis_queue.front();
 						vis_queue.pop();
-						/*VIS*/ DSA_VIS_MSG("BFS 出队节点 " + as_string(u), true);
-						/*VIS*/ DSA_VIS_G_MARK_NODE("G", DSA_VIS_NODE(u), false);
-						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "blue", false);
+						DSA_VIS_ONLY(Vis::MarkNode("G", u, "blue"));
+						/*VIS*/ DSA_VIS_STEP("BFS 出队节点 " + Vis::ToString(u) + "，扫描它的邻边");
 						for (auto v : g.adj[u])
 							if (!vis[v])
 							{
-								/*VIS*/ DSA_VIS_MSG("BFS 扫描边 " + as_string(u) + " -> " + as_string(v), false);
-								/*VIS*/ DSA_VIS_G_MARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
-								/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), "#2563eb", 3, "", false);
+								DSA_VIS_ONLY(Vis::MarkEdge("G", u, v, "", "#2563eb"));
 								vis_queue.push(v);
 								vis[v] = ++visited;
-								/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(v), "green", false);
-								/*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(v), as_string(v) + "\nord=" + as_string(vis[v]), false);
-								/*VIS*/ DSA_VIS_MSG("BFS 发现并入队 " + as_string(v), true);
-								/*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
+								DSA_VIS_ONLY(Vis::SetNodeColor("G", v, "green"));
+								DSA_VIS_ONLY(Vis::SetNodeLabel("G", v, Vis::ToString(v) + "\nord=" + Vis::ToString(vis[v])));
+								/*VIS*/ DSA_VIS_STEP("BFS 通过边 " + Vis::ToString(u) + " -> " + Vis::ToString(v) + " 发现新节点并入队");
+								DSA_VIS_ONLY(Vis::UnmarkEdge("G", u, v));
 							}
-						/*VIS*/ DSA_VIS_G_UNMARK_NODE("G", DSA_VIS_NODE(u), false);
-						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "gray", false);
+						DSA_VIS_ONLY(Vis::UnmarkNode("G", u));
+						DSA_VIS_ONLY(Vis::SetNodeColor("G", u, "gray"));
 					}
 				}
 				static void Demo(int n, const std::vector<std::pair<int, int>> &edges, bool directed = false)
@@ -168,20 +140,10 @@ namespace DSA
 					instance.vis_queue = std::queue<int>();
 					instance.vis = std::vector<int>(n + 1, 0);
 					instance.visited = 0;
-					/*VIS*/ DSA_VIS_G_INIT("G", directed);
-					for (int i = 1; i <= n; ++i)
-					{
-						/*VIS*/ DSA_VIS_G_NEW_NODE("G", DSA_VIS_NODE(i), i, false);
-						/*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "black", false);
-					}
-					for (auto e : instance.g.E)
-					{
-						/*VIS*/ DSA_VIS_G_NEW_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "", false);
-						/*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#64748b", 2, "", false);
-					}
-					/*VIS*/ DSA_VIS_MSG("BFS Demo 开始", true);
+					DSA_VIS_ONLY(Vis::InitBasicGraph(instance.g));
+					/*VIS*/ DSA_VIS_STEP("BFS Demo 开始");
 					instance.BFS(1);
-					/*VIS*/ DSA_VIS_MSG("BFS Demo 结束", false);
+					/*VIS*/ DSA_VIS_STEP("BFS Demo 结束");
 				}
 			};
 

@@ -1,10 +1,12 @@
-#pragma once
+﻿#pragma once
 #include <algorithm>
 #include <string>
 #include <exception>
 #include <limits>
+#include <queue>
 #include <sstream>
 #include "weighted_graph.hpp"
+#include "graph_vis.hpp"
 #include "../utils.hpp"
 #include "../vis_trace.hpp"
 namespace DSA
@@ -51,62 +53,67 @@ namespace DSA
                             // 如果图中存在平行边（两条或更多连接相同两个节点的边），取权重最小的那条。
                             dis[i][j] = std::min(dis[i][j], e.weight);
                         }
-                    auto as_string = [](const auto &x)
+                    DSA_VIS_DECL(auto as_string = [](const auto &x)
                     {
                         std::ostringstream oss;
                         oss << x;
                         return oss.str();
-                    };
-                    /*VIS*/ DSA_VIS_G_INIT("G", g.is_directed);
-                    for (int i = 1; i <= n; ++i)
-                    {
-                        /*VIS*/ DSA_VIS_G_NEW_NODE("G", DSA_VIS_NODE(i), i, false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "black", false);
-                    }
-                    for (auto e : g.E)
-                    {
-                        /*VIS*/ DSA_VIS_G_NEW_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), e.w, false);
-                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#64748b", 2, "", false);
-                    }
+                    };)
+                    DSA_VIS_ONLY({
+                        DSA_VIS_G_INIT("G", g.is_directed);
+                        for (int i = 1; i <= n; ++i)
+                        {
+                            DSA_VIS_G_NEW_NODE("G", DSA_VIS_NODE(i), i, false);
+                            DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "black", false);
+                        }
+                        for (auto e : g.E)
+                        {
+                            DSA_VIS_G_NEW_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), e.w, false);
+                            DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#64748b", 2, "", false);
+                        }
+                    });
                     /*VIS*/ DSA_VIS_G_LAYOUT("G", false);
-                    for (int ii = 1; ii <= n; ++ii)
-                    {
-                        std::vector<std::string> row(n);
-                        for (int jj = 1; jj <= n; ++jj)
-                            row[jj - 1] = (dis[ii][jj] >= Infinity<T>()) ? std::string("INF") : as_string(dis[ii][jj]);
-                        std::string obj = "DIS_" + as_string(ii);
-                        /*VIS*/ DSA_VIS_ARR_INIT(obj, row.begin(), row.end());
-                        /*VIS*/ DSA_VIS_ARR_SYNC(obj, row.begin(), row.end(), false);
-                    }
-                    /*VIS*/ DSA_VIS_MSG("Floyd 初始化完成", true);
+                    /*VIS*/ DSA_VIS_STATE_INIT_MATRIX_LABELED("DIS", n, n, "DIS[i][j] shortest distance from i to j", 1, 1, "row = source i, column = target j", false);
+                    DSA_VIS_ONLY({
+                        for (int ii = 1; ii <= n; ++ii)
+                            for (int jj = 1; jj <= n; ++jj)
+                            {
+                                std::string cell = (dis[ii][jj] >= Infinity<T>()) ? std::string("INF") : as_string(dis[ii][jj]);
+                                DSA_VIS_STATE_SET("DIS", ii - 1, jj - 1, cell, false);
+                                DSA_VIS_STATE_HISTORY("DIS", ii - 1, jj - 1, cell, "init", false);
+                            }
+                    });
+                    /*VIS*/ DSA_VIS_STEP("Floyd 初始化完成：距离矩阵记录所有直接边和自身距离");
                     // 核心的三重循环。
                     for (int k = 1; k <= n; k++)                                            // k 是作为中间节点的“中转站”
                     {
                         /*VIS*/ DSA_VIS_G_MARK_NODE("G", DSA_VIS_NODE(k), false);
                         /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(k), "blue", false);
-                        /*VIS*/ DSA_VIS_MSG("中转点 k=" + as_string(k), true);
+                        /*VIS*/ DSA_VIS_STEP("Floyd：枚举中转点 k=" + as_string(k));
                         for (int i = 1; i <= n; i++)                                        // i 是路径的起点
                             for (int j = 1; j <= n; j++)                                    // j 是路径的终点
                                 if (dis[i][k] < Infinity<T>() && dis[k][j] < Infinity<T>()) // 如果从 i 到 k 和从 k 到 j 的路径都存在（距离不是无穷大）
                                 {
+                                    /*VIS*/ DSA_VIS_STATE_CLEAR_FOCUS("DIS", false);
+                                    /*VIS*/ DSA_VIS_STATE_FOCUS("DIS", i - 1, j - 1, "write", false);
+                                    /*VIS*/ DSA_VIS_STATE_FOCUS("DIS", i - 1, k - 1, "read", false);
+                                    /*VIS*/ DSA_VIS_STATE_FOCUS("DIS", k - 1, j - 1, "candidate", false);
                                     T old_dis = dis[i][j];
                                     dis[i][j] = std::min(dis[i][j], dis[i][k] + dis[k][j]); // 更新 dis[i][j]：取 (原来的 i到j 的距离) 和 (经由k中转的距离) 中的较小者;这就是 Floyd 算法的松弛操作。
                                     if (dis[i][j] != old_dis)
                                     {
-                                        for (int ii = 1; ii <= n; ++ii)
-                                        {
-                                            std::vector<std::string> row(n);
-                                            for (int jj = 1; jj <= n; ++jj)
-                                                row[jj - 1] = (dis[ii][jj] >= Infinity<T>()) ? std::string("INF") : as_string(dis[ii][jj]);
-                                            std::string obj = "DIS_" + as_string(ii);
-                                            /*VIS*/ DSA_VIS_ARR_INIT(obj, row.begin(), row.end());
-                                            /*VIS*/ DSA_VIS_ARR_SYNC(obj, row.begin(), row.end(), false);
-                                        }
-                                        /*VIS*/ DSA_VIS_MSG(
-                                            "更新 dist[" + as_string(i) + "][" + as_string(j) + "]："
+                                        DSA_VIS_DECL(std::string new_dis = as_string(dis[i][j]);)
+                                        DSA_VIS_ONLY(DSA_VIS_STATE_SET("DIS", i - 1, j - 1, new_dis, false));
+                                        DSA_VIS_ONLY(DSA_VIS_STATE_HISTORY("DIS", i - 1, j - 1, new_dis, "via k=" + as_string(k), false));
+                                        /*VIS*/ DSA_VIS_STEP(
+                                            "Floyd 更新 dist[" + as_string(i) + "][" + as_string(j) + "]："
                                                 + (old_dis >= Infinity<T>() ? std::string("INF") : as_string(old_dis))
-                                                + " -> " + as_string(dis[i][j]),
-                                            true);
+                                                + " -> " + new_dis + "，因为经过 k=" + as_string(k) + " 更短");
+                                    }
+                                    else
+                                    {
+                                        /*VIS*/ DSA_VIS_STEP(
+                                            "Floyd 比较 dist[" + as_string(i) + "][" + as_string(j) + "]：经过 k=" + as_string(k) + " 没有更短");
                                     }
                                 }
                         /*VIS*/ DSA_VIS_G_UNMARK_NODE("G", DSA_VIS_NODE(k), false);
@@ -116,7 +123,8 @@ namespace DSA
                     bool reach_negative_ring = false;
                     for (int i = 1; i <= n; i++)
                         reach_negative_ring = reach_negative_ring || dis[i][i] < 0; // 如果一个节点到其自身的距离变为负数，说明从这个节点出发可以到达一个负权环。
-                    /*VIS*/ DSA_VIS_MSG(reach_negative_ring ? "检测到负权环" : "Floyd 结束", false);
+                    /*VIS*/ DSA_VIS_STATE_CLEAR_FOCUS("DIS", false);
+                    /*VIS*/ DSA_VIS_STEP(reach_negative_ring ? "Floyd 结束：检测到负权环" : "Floyd 结束：距离矩阵已经稳定");
                     return reach_negative_ring;
                 }
             }
@@ -147,82 +155,62 @@ namespace DSA
                     // 源点到自身的距离为 0。
                     dis[s] = 0;
                     bool relaxed = false; // 标记在一轮循环中是否发生了松弛操作。
-                    auto as_string = [](const auto &x)
-                    {
-                        std::ostringstream oss;
-                        oss << x;
-                        return oss.str();
-                    };
-                    /*VIS*/ DSA_VIS_G_INIT("G", g.is_directed);
-                    for (int i = 1; i <= n; ++i)
-                    {
-                        /*VIS*/ DSA_VIS_G_NEW_NODE("G", DSA_VIS_NODE(i), i, false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "black", false);
-                    }
-                    for (auto e : g.E)
-                    {
-                        /*VIS*/ DSA_VIS_G_NEW_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), e.w, false);
-                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#64748b", 2, "", false);
-                    }
-                    /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(s), "blue", false);
-                    /*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(s), as_string(s) + "\nd=0", false);
-                    /*VIS*/ DSA_VIS_MSG("Bellman-Ford 初始化，源点=" + as_string(s), true);
+                    DSA_VIS_ONLY(Vis::InitWeightedGraph(g));
+                    DSA_VIS_ONLY(Vis::InitDistanceState("DIST", dis, n));
+                    DSA_VIS_ONLY(Vis::SetNodeColor("G", s, "blue"));
+                    DSA_VIS_ONLY(Vis::SetNodeLabel("G", s, Vis::ToString(s) + "\nd=0"));
+                    /*VIS*/ DSA_VIS_STEP("Bellman-Ford 初始化完成：源点 " + Vis::ToString(s) + " 距离为 0");
 
                     // 主循环，最多执行 n 轮。
                     for (int i = 1; i <= n; i++)
                     {
                         relaxed = false;
-                        /*VIS*/ DSA_VIS_MSG("第 " + as_string(i) + " 轮松弛", true);
+                        /*VIS*/ DSA_VIS_STEP("Bellman-Ford 第 " + Vis::ToString(i) + " 轮：扫描所有边并尝试松弛");
                         // 遍历图中的每一条边。
                         for (auto e : g.E)
                         {
-                            /*VIS*/ DSA_VIS_G_MARK_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), false);
-                            /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#2563eb", 3, "", false);
+                            auto relax_edge = [&](int from, int to)
+                            {
+                                DSA_VIS_ONLY(Vis::FocusRelaxation("DIST", from, to));
+                                // 如果从源点到 from 的距离已知，并且通过 from 到达 to 的路径更短...
+                                if (dis[from] < Infinity<T>() && dis[from] + e.w < dis[to])
+                                {
+                                    T old_dis = dis[to];
+                                    dis[to] = dis[from] + e.w;
+                                    relaxed = true;
+                                    DSA_VIS_ONLY(Vis::SetDistance("DIST", to, dis[to], "via " + Vis::ToString(from)));
+                                    DSA_VIS_ONLY(Vis::StyleEdge("G", e.u, e.v, "#16a34a", 3));
+                                    DSA_VIS_ONLY(Vis::SetNodeLabel("G", to, Vis::ToString(to) + "\nd=" + Vis::ToString(dis[to])));
+                                    DSA_VIS_ONLY(Vis::SetNodeColor("G", to, "green"));
+                                    /*VIS*/ DSA_VIS_STEP(
+                                        "Bellman-Ford 松弛边 " + Vis::ToString(from) + "->" + Vis::ToString(to) + "：dist[" + Vis::ToString(to) + "] "
+                                            + Vis::DistanceText(old_dis) + " -> " + Vis::ToString(dis[to]));
+                                    return;
+                                }
+                                /*VIS*/ DSA_VIS_STEP("Bellman-Ford 检查边 " + Vis::ToString(from) + "->" + Vis::ToString(to) + "：未改善最短路");
+                            };
+                            DSA_VIS_ONLY(Vis::MarkEdge("G", e.u, e.v, e.w, "#2563eb"));
                             // 对边 (u, v) 进行松弛操作。
-                            // 如果从源点到 u 的距离已知，并且通过 u 到达 v 的路径更短...
-                            if (dis[e.u] < Infinity<T>() && dis[e.u] + e.w < dis[e.v])
-                            {
-                                T old_dis = dis[e.v];
-                                dis[e.v] = dis[e.u] + e.w, relaxed = true; // ...则更新到 v 的最短距离，标记发生了松弛。
-                                /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#16a34a", 3, "", false);
-                                /*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(e.v), as_string(e.v) + "\nd=" + as_string(dis[e.v]), false);
-                                /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(e.v), "green", false);
-                                /*VIS*/ DSA_VIS_MSG(
-                                    "松弛 " + as_string(e.u) + "->" + as_string(e.v) + "："
-                                        + (old_dis >= Infinity<T>() ? std::string("INF") : as_string(old_dis))
-                                        + " -> " + as_string(dis[e.v]),
-                                    true);
-                            }
-                            else
-                            {
-                                /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#94a3b8", 2, "6,4", false);
-                            }
+                            relax_edge(e.u, e.v);
 
                             // 如果是无向图，还需要对反向边 (v, u) 进行松弛。
                             if (!g.is_directed)
-                                if (dis[e.v] < Infinity<T>() && dis[e.v] + e.w < dis[e.u])
-                                {
-                                    T old_dis = dis[e.u];
-                                    dis[e.u] = dis[e.v] + e.w, relaxed = true;
-                                    /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#16a34a", 3, "", false);
-                                    /*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(e.u), as_string(e.u) + "\nd=" + as_string(dis[e.u]), false);
-                                    /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(e.u), "green", false);
-                                    /*VIS*/ DSA_VIS_MSG(
-                                        "松弛 " + as_string(e.v) + "->" + as_string(e.u) + "："
-                                            + (old_dis >= Infinity<T>() ? std::string("INF") : as_string(old_dis))
-                                            + " -> " + as_string(dis[e.u]),
-                                        true);
-                                }
-                            /*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), false);
+                                relax_edge(e.v, e.u);
+                            DSA_VIS_ONLY(Vis::UnmarkEdge("G", e.u, e.v));
+                            DSA_VIS_ONLY(Vis::StyleEdge("G", e.u, e.v, "#64748b", 2));
                         }
                         // 优化：如果在某一轮中没有发生任何松弛操作，说明最短路径已经找到，可以提前退出。
                         if (!relaxed)
+                        {
+                            /*VIS*/ DSA_VIS_STEP("Bellman-Ford 本轮没有任何更新，提前结束");
                             break;
+                        }
                     }
                     // 在 n-1 轮之后，`relaxed` 仍然为 true，说明在第 n 轮循环中仍然发生了松弛。
                     // 这只有在图中存在负权环时才会发生。
                     bool reach_negative_ring = relaxed;
-                    /*VIS*/ DSA_VIS_MSG(reach_negative_ring ? "Bellman-Ford 检测到负权环" : "Bellman-Ford 结束", false);
+                    DSA_VIS_ONLY(Vis::ClearFocus("DIST"));
+                    /*VIS*/ DSA_VIS_STEP(reach_negative_ring ? "Bellman-Ford 检测到负权环" : "Bellman-Ford 结束：最短距离已稳定");
                     return reach_negative_ring;
                 }
                 /**
@@ -255,26 +243,14 @@ namespace DSA
                     // 算法从源点 s 开始。
                     q.push(s);
                     inq[s] = true;
-                    auto as_string = [](const auto &x)
-                    {
-                        std::ostringstream oss;
-                        oss << x;
-                        return oss.str();
-                    };
-                    /*VIS*/ DSA_VIS_G_INIT("G", g.is_directed);
-                    for (int i = 1; i <= n; ++i)
-                    {
-                        /*VIS*/ DSA_VIS_G_NEW_NODE("G", DSA_VIS_NODE(i), i, false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "black", false);
-                    }
-                    for (auto e : g.E)
-                    {
-                        /*VIS*/ DSA_VIS_G_NEW_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), e.w, false);
-                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#64748b", 2, "", false);
-                    }
-                    /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(s), "blue", false);
-                    /*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(s), as_string(s) + "\nd=0", false);
-                    /*VIS*/ DSA_VIS_MSG("SPFA 初始化，源点=" + as_string(s), true);
+                    DSA_VIS_ONLY(Vis::InitWeightedGraph(g));
+                    DSA_VIS_ONLY(Vis::InitDistanceState("DIST", dis, n));
+                    DSA_VIS_ONLY(Vis::InitValueState("CNT", cnt, n));
+                    DSA_VIS_ONLY(Vis::SeqClear("QUEUE"));
+                    DSA_VIS_ONLY(Vis::SeqPush("QUEUE", s));
+                    DSA_VIS_ONLY(Vis::SetNodeColor("G", s, "blue"));
+                    DSA_VIS_ONLY(Vis::SetNodeLabel("G", s, Vis::ToString(s) + "\nd=0"));
+                    /*VIS*/ DSA_VIS_STEP("SPFA 初始化完成：源点 " + Vis::ToString(s) + " 入队，距离为 0");
                     bool reach_negative_ring = false;
                     while (!q.empty())
                     {
@@ -282,14 +258,15 @@ namespace DSA
                         int u = q.front();
                         q.pop();
                         inq[u] = false;
-                        /*VIS*/ DSA_VIS_G_MARK_NODE("G", DSA_VIS_NODE(u), false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "blue", false);
+                        DSA_VIS_ONLY(Vis::SeqPop("QUEUE"));
+                        DSA_VIS_ONLY(Vis::MarkNode("G", u, "blue"));
+                        /*VIS*/ DSA_VIS_STEP("SPFA 出队节点 " + Vis::ToString(u) + "，扫描它的出边");
                         // 遍历从 u 出发的所有边，进行松弛。
                         for (auto e : g.adj[u])
                         {
                             int v = e.adjvex;
-                            /*VIS*/ DSA_VIS_G_MARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
-                            /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), "#2563eb", 3, "", false);
+                            DSA_VIS_ONLY(Vis::MarkEdge("G", u, v, e.weight, "#2563eb"));
+                            DSA_VIS_ONLY(Vis::FocusRelaxation("DIST", u, v));
                             // 如果通过 u 可以找到一条到 v 的更短路径...
                             if (dis[u] + e.weight < dis[v])
                             {
@@ -303,35 +280,40 @@ namespace DSA
                                 {
                                     inq[v] = true;
                                     q.push(v);
+                                    DSA_VIS_ONLY(Vis::SeqPush("QUEUE", v));
                                 }
-                                /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), "#16a34a", 3, "", false);
-                                /*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(v), as_string(v) + "\nd=" + as_string(dis[v]), false);
-                                /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(v), "green", false);
-                                /*VIS*/ DSA_VIS_MSG(
-                                    "松弛 " + as_string(u) + "->" + as_string(v) + "："
-                                        + (old_dis >= Infinity<T>() ? std::string("INF") : as_string(old_dis))
-                                        + " -> " + as_string(dis[v]),
-                                    true);
+                                DSA_VIS_ONLY(Vis::SetDistance("DIST", v, dis[v], "via " + Vis::ToString(u)));
+                                DSA_VIS_ONLY(Vis::SetValue("CNT", v, cnt[v], "via " + Vis::ToString(u)));
+                                DSA_VIS_ONLY(Vis::StyleEdge("G", u, v, "#16a34a", 3));
+                                DSA_VIS_ONLY(Vis::SetNodeLabel("G", v, Vis::ToString(v) + "\nd=" + Vis::ToString(dis[v])));
+                                DSA_VIS_ONLY(Vis::SetNodeColor("G", v, "green"));
+                                /*VIS*/ DSA_VIS_STEP(
+                                    "SPFA 松弛边 " + Vis::ToString(u) + "->" + Vis::ToString(v) + "：dist[" + Vis::ToString(v) + "] "
+                                        + Vis::DistanceText(old_dis) + " -> " + Vis::ToString(dis[v]) + "，必要时加入候选队列");
                                 // 负权环检测：如果到 v 的最短路径边数 >= n，
                                 // 说明这条路径上必然有环（鸽巢原理），且该环为负权环。
                                 if (cnt[v] >= n)
                                 {
                                     reach_negative_ring = true;
+                                    /*VIS*/ DSA_VIS_STEP("SPFA：节点 " + Vis::ToString(v) + " 的路径边数达到 " + Vis::ToString(cnt[v]) + "，检测到负权环");
                                     break;
                                 }
                             }
                             else
                             {
-                                /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), "#94a3b8", 2, "6,4", false);
+                                DSA_VIS_ONLY(Vis::StyleEdge("G", u, v, "#94a3b8", 2, "6,4"));
+                                /*VIS*/ DSA_VIS_STEP("SPFA 检查边 " + Vis::ToString(u) + "->" + Vis::ToString(v) + "：未改善最短路");
                             }
-                            /*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), false);
+                            DSA_VIS_ONLY(Vis::UnmarkEdge("G", u, v));
+                            DSA_VIS_ONLY(Vis::StyleEdge("G", u, v, "#64748b", 2));
                         }
-                        /*VIS*/ DSA_VIS_G_UNMARK_NODE("G", DSA_VIS_NODE(u), false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "gray", false);
+                        DSA_VIS_ONLY(Vis::UnmarkNode("G", u));
+                        DSA_VIS_ONLY(Vis::SetNodeColor("G", u, "gray"));
                         if (reach_negative_ring)
                             break;
                     }
-                    /*VIS*/ DSA_VIS_MSG(reach_negative_ring ? "SPFA 检测到负权环" : "SPFA 结束", false);
+                    DSA_VIS_ONLY(Vis::ClearFocus("DIST"));
+                    /*VIS*/ DSA_VIS_STEP(reach_negative_ring ? "SPFA 检测到负权环" : "SPFA 结束：候选队列为空，距离已稳定");
                     return reach_negative_ring;
                 }
 
@@ -357,12 +339,12 @@ namespace DSA
                     if (s < 1 || s > n)
                         return false;
                     dis[s] = 0;
-                    auto as_string = [](const auto &x)
+                    DSA_VIS_DECL(auto as_string = [](const auto &x)
                     {
                         std::ostringstream oss;
                         oss << x;
                         return oss.str();
-                    };
+                    };)
 
                     // Dijkstra 算法的前提是图中没有负权边。
                     // 此处检查是否存在负权边。
@@ -370,17 +352,9 @@ namespace DSA
                     for (auto e : g.E)
                         if (e.w < 0)
                             return has_negative_edge = true; // 如果找到负权边，算法无法保证正确性，直接返回。
-                    /*VIS*/ DSA_VIS_G_INIT("G", g.is_directed);
-                    for (int i = 1; i <= n; ++i)
-                    {
-                        /*VIS*/ DSA_VIS_G_NEW_NODE("G", DSA_VIS_NODE(i), i, false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(i), "black", false);
-                    }
-                    for (auto e : g.E)
-                    {
-                        /*VIS*/ DSA_VIS_G_NEW_EDGE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), e.w, false);
-                        /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(e.u), DSA_VIS_NODE(e.v), "#64748b", 2, "", false);
-                    }
+                    DSA_VIS_ONLY(Vis::InitWeightedGraph(g));
+                    DSA_VIS_ONLY(Vis::InitDistanceState("DIST", dis, n));
+                    DSA_VIS_ONLY(Vis::InitFlagState("FIXED", n));
 
                     // 定义用于优先队列的节点结构
                     struct lazy_node
@@ -395,32 +369,45 @@ namespace DSA
                     // 将源点 s 加入优先队列。
                     heap.push({s, dis[s]});
                     std::vector<char> fixed(n + 1, false);
-                    /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(s), "blue", false);
-                    /*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(s), as_string(s) + "\nd=0", false);
-                    /*VIS*/ DSA_VIS_MSG("初始化完成，源点为 " + as_string(s), false);
-                    /*VIS*/ DSA_VIS_G_MARK_NODE("G", DSA_VIS_NODE(s), true);
+                    DSA_VIS_ONLY(Vis::SetNodeColor("G", s, "blue"));
+                    DSA_VIS_ONLY(Vis::SetNodeLabel("G", s, as_string(s) + "\nd=0"));
+                    /*VIS*/ DSA_VIS_STEP("Dijkstra 初始化完成：源点 " + as_string(s) + " 距离为 0，加入候选集合（代码用堆维护）");
+                    /*VIS*/ DSA_VIS_G_MARK_NODE("G", DSA_VIS_NODE(s), false);
                     while (!heap.empty())
                     {
                         // 从优先队列中取出当前距离源点最近的节点 u。
                         auto cur = heap.top();
                         heap.pop();
                         int u = cur.node_index;
+                        DSA_VIS_ONLY(Vis::ClearFocus("DIST"));
+                        DSA_VIS_ONLY(Vis::FocusCell("DIST", u, "candidate"));
                         if (cur.lazy_dis != dis[u])
+                        {
                             continue;
+                        }
                         if (fixed[u])
+                        {
                             continue;
+                        }
                         fixed[u] = true;
-                        /*VIS*/ DSA_VIS_MSG("选取当前最小未确定点 u=" + as_string(u), false);
-                        /*VIS*/ DSA_VIS_G_MARK_NODE("G", DSA_VIS_NODE(u), false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "blue", true);
+                        DSA_VIS_ONLY(Vis::SetFlag("FIXED", u, "Y"));
+                        DSA_VIS_ONLY(Vis::ClearFocus("DIST"));
+                        DSA_VIS_ONLY(Vis::FocusCell("DIST", u, "write"));
+                        /*VIS*/ DSA_VIS_STEP("Dijkstra：选取当前最小未确定点 u=" + as_string(u) + "，距离确定为 " + as_string(dis[u]));
+                        DSA_VIS_ONLY(Vis::MarkNode("G", u, "blue"));
                         // 遍历 u 的所有邻居 v。
                         for (auto e : g.adj[u])
                         {
                             int v = e.adjvex;
                             if (fixed[v])
+                            {
+                                /*VIS*/ DSA_VIS_STEP("Dijkstra：邻点 " + as_string(v) + " 已确定，跳过边 " + as_string(u) + "->" + as_string(v));
                                 continue;
-                            /*VIS*/ DSA_VIS_G_MARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), true);
-                            /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), "#2563eb", 3, "", false);
+                            }
+                            DSA_VIS_ONLY(Vis::MarkEdge("G", u, v, e.weight, "#2563eb"));
+                            DSA_VIS_ONLY(Vis::ClearFocus("DIST"));
+                            DSA_VIS_ONLY(Vis::FocusCell("DIST", u, "read"));
+                            DSA_VIS_ONLY(Vis::FocusCell("DIST", v, "write"));
                             // 松弛操作：如果通过 u 能找到到 v 的更短路径...
                             if (dis[u] + e.weight < dis[v])
                             {
@@ -430,34 +417,35 @@ namespace DSA
                                 // 将更新后的 v（及其新距离）加入优先队列。
                                 // 注意：这里没有删除堆中可能存在的旧的、更长的 (v, old_dis) 条目。
                                 heap.push({v, dis[v]});
-                                /*VIS*/ DSA_VIS_MSG(
-                                    "松弛边 " + as_string(u) + "-" + as_string(v) + "，dist[" + as_string(v) + "] " +
-                                        (old_dis >= Infinity<T>() ? std::string("INF") : as_string(old_dis)) + " -> " + as_string(dis[v]),
-                                    false);
-                                /*VIS*/ DSA_VIS_G_SET_EDGE_LABEL("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), e.weight, false);
-                                /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), "#16a34a", 3, "", false);
-                                /*VIS*/ DSA_VIS_G_SET_NODE_VALUE("G", DSA_VIS_NODE(v), as_string(v) + "\\nd=" + as_string(dis[v]), false);
-                                /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(v), "green", true);
+                                DSA_VIS_ONLY(Vis::SetDistance("DIST", v, dis[v], "via " + as_string(u)));
+                                DSA_VIS_ONLY(Vis::MarkEdge("G", u, v, e.weight, "#16a34a"));
+                                DSA_VIS_ONLY(Vis::SetNodeLabel("G", v, as_string(v) + "\\nd=" + as_string(dis[v])));
+                                DSA_VIS_ONLY(Vis::SetNodeColor("G", v, "green"));
+                                /*VIS*/ DSA_VIS_STEP(
+                                    "Dijkstra 松弛边 " + as_string(u) + "->" + as_string(v) + "：dist[" + as_string(v) + "] "
+                                        + (old_dis >= Infinity<T>() ? std::string("INF") : as_string(old_dis)) + " -> " + as_string(dis[v]) + "，节点 " + as_string(v) + " 加入候选集合");
                             }
                             else
                             {
-                                /*VIS*/ DSA_VIS_MSG("检查边 " + as_string(u) + "-" + as_string(v) + "，未改善最短路", false);
-                                /*VIS*/ DSA_VIS_G_SET_EDGE_LABEL("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), e.weight, false);
-                                /*VIS*/ DSA_VIS_G_SET_EDGE_STYLE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), "#94a3b8", 2, "6,4", false);
+                                DSA_VIS_ONLY(Vis::MarkEdge("G", u, v, e.weight, "#94a3b8", 2, "6,4"));
+                                /*VIS*/ DSA_VIS_STEP("Dijkstra 检查边 " + as_string(u) + "->" + as_string(v) + "：未改善最短路");
                             }
-                            /*VIS*/ DSA_VIS_G_UNMARK_EDGE("G", DSA_VIS_NODE(u), DSA_VIS_NODE(v), true);
+                            DSA_VIS_ONLY(Vis::UnmarkEdge("G", u, v));
                         }
-                        /*VIS*/ DSA_VIS_G_UNMARK_NODE("G", DSA_VIS_NODE(u), false);
-                        /*VIS*/ DSA_VIS_G_SET_NODE_COLOR("G", DSA_VIS_NODE(u), "gray", true);
+                        DSA_VIS_ONLY(Vis::UnmarkNode("G", u));
+                        DSA_VIS_ONLY(Vis::SetNodeColor("G", u, "gray"));
                         // “懒惰删除”：这是一个使用标准库时的技巧。
                         // 在取出下一个节点之前，检查堆顶元素的距离是否是其最新距离。
                         // 如果堆顶节点的 stored_dis 与其在 dis 数组中的最新距离不符，
                         // 说明这个堆顶条目是过时的（已经被更短的路径更新过），直接丢弃。
                         // 重复此过程，直到堆顶是有效条目或堆为空。
                         while (!heap.empty() && dis[heap.top().node_index] != heap.top().lazy_dis)
+                        {
                             heap.pop();
+                        }
                     }
-                    /*VIS*/ DSA_VIS_MSG("Dijkstra 结束", false);
+                    DSA_VIS_ONLY(Vis::ClearFocus("DIST"));
+                    /*VIS*/ DSA_VIS_STEP("Dijkstra 结束：所有可达点的最短距离已确定");
                     return has_negative_edge;
                 }
             }
@@ -465,3 +453,4 @@ namespace DSA
         }
     }
 }
+

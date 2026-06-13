@@ -3,6 +3,7 @@
 #include <functional>
 #include <queue>
 #include "../../utils.hpp"
+#include "../../vis_trace.hpp"
 namespace DSA
 {
     namespace Tree
@@ -66,6 +67,7 @@ namespace DSA
             template <typename T, typename NodeType>
             void swap_node(BinaryTreeNodeLinked<T, NodeType> &x, BinaryTreeNodeLinked<T, NodeType> &y)
             {
+                DSA_VIS_BT_SWAP_TOPOLOGY("T", static_cast<NodeType *>(&x), static_cast<NodeType *>(&y), false); /*VIS*/
                 std::swap(x.parent, y.parent);
                 std::swap(x.children, y.children);
             }

@@ -44,20 +44,15 @@ namespace DSA
                         parent[i] = i;
 #ifdef DSA_VIS_ENABLE
                     constexpr const char *kVisObj = "U";
-                    const void *vis_super_root = static_cast<const void *>(this);
-                    DSA_VIS_TREE_INIT(kVisObj);                                 /*VIS*/
-                    DSA_VIS_TREE_NEW_NODE(kVisObj, vis_super_root, "DSU", false); /*VIS*/
-                    DSA_VIS_TREE_SET_ROOT(kVisObj, vis_super_root, false);      /*VIS*/
-                    DSA_VIS_TREE_HIDE_NODE(kVisObj, vis_super_root, false);     /*VIS*/
+                    DSA_VIS_TREE_INIT(kVisObj); /*VIS*/
                     for (int i = 1; i <= number_of_node; ++i)
                     {
-                        DSA_VIS_TREE_NEW_NODE(kVisObj, vis_node_ref(i), i, false);                /*VIS*/
-                        DSA_VIS_TREE_ADD_CHILD(kVisObj, vis_super_root, vis_node_ref(i), false);  /*VIS*/
+                        DSA_VIS_TREE_NEW_NODE(kVisObj, vis_node_ref(i), i, false);      /*VIS*/
+                        DSA_VIS_TREE_ADD_ROOT(kVisObj, vis_node_ref(i), false);         /*VIS*/
                         DSA_VIS_TREE_SET_NOTE(kVisObj, vis_node_ref(i), vis_node_note(i), false); /*VIS*/
                     }
-                    DSA_VIS_TREE_SET_NOTE(kVisObj, vis_super_root, "super-root", false); /*VIS*/
 #endif
-                    DSA_VIS_MSG(std::string("DSU 初始化：n=") + std::to_string(number_of_node), true); /*VIS*/
+                    DSA_VIS_STEP(std::string("DSU 初始化：") + std::to_string(number_of_node) + " 个元素各自成为一个集合"); /*VIS*/
                 }
                 /**
                  * @brief 递归实现的 Find 操作，带有路径压缩优化。
@@ -76,10 +71,9 @@ namespace DSA
                     int root = FindRecursive(old_parent);
                     if (parent[x] != root)
                     {
-                        DSA_VIS_MSG(std::string("路径压缩：") + std::to_string(x) + " -> " + std::to_string(root), false); /*VIS*/
                         parent[x] = root;
-                        DSA_VIS_TREE_ADD_CHILD("U", vis_node_ref(root), vis_node_ref(x), false);          /*VIS*/
-                        DSA_VIS_TREE_SET_NOTE("U", vis_node_ref(x), vis_node_note(x), false);             /*VIS*/
+                        DSA_VIS_ONLY(vis_reparent_node(root, x));
+                        DSA_VIS_STEP(std::string("Find(") + std::to_string(x) + ") 路径压缩：原父节点 " + std::to_string(old_parent) + " 改为直接指向代表元 " + std::to_string(root)); /*VIS*/
                     }
                     return root;
                 }
@@ -101,9 +95,10 @@ namespace DSA
                         t = parent[x];
                         if (parent[x] != p)
                         {
+                            int old_parent = parent[x];
                             parent[x] = p;
-                            DSA_VIS_TREE_ADD_CHILD("U", vis_node_ref(p), vis_node_ref(x), false);         /*VIS*/
-                            DSA_VIS_TREE_SET_NOTE("U", vis_node_ref(x), vis_node_note(x), false);         /*VIS*/
+                            DSA_VIS_ONLY(vis_reparent_node(p, x));
+                            DSA_VIS_STEP(std::string("Find(") + std::to_string(x) + ") 路径压缩：原父节点 " + std::to_string(old_parent) + " 改为直接指向代表元 " + std::to_string(p)); /*VIS*/
                         }
                         x = t;
                     }
@@ -117,20 +112,16 @@ namespace DSA
                     x = Find(x), y = Find(y);
                     if (x == y)
                     {
-                        DSA_VIS_MSG(std::string("Union 跳过：") + std::to_string(x) + " 与 " + std::to_string(y) + " 已连通", true); /*VIS*/
+                        DSA_VIS_STEP(std::string("UnionRandomly 跳过：两个元素代表元同为 ") + std::to_string(x) + "，已经连通"); /*VIS*/
                         return;
                     }
-                    DSA_VIS_MSG(std::string("UnionRandomly：合并根 ") + std::to_string(x) + " -> " + std::to_string(y), true); /*VIS*/
-                    DSA_VIS_TREE_MARK("U", vis_node_ref(x), false); /*VIS*/
-                    DSA_VIS_TREE_MARK("U", vis_node_ref(y), false); /*VIS*/
+                    DSA_VIS_ONLY(vis_focus_roots(x, y));
                     parent[x] = y;
-                    DSA_VIS_TREE_ADD_CHILD("U", vis_node_ref(y), vis_node_ref(x), true); /*VIS*/
                     size[y] += size[x];
                     rnk[y] = std::max(rnk[y], rnk[x] + 1);
-                    DSA_VIS_TREE_SET_NOTE("U", vis_node_ref(x), vis_node_note(x), false); /*VIS*/
-                    DSA_VIS_TREE_SET_NOTE("U", vis_node_ref(y), vis_node_note(y), false); /*VIS*/
-                    DSA_VIS_TREE_UNMARK("U", vis_node_ref(x), false); /*VIS*/
-                    DSA_VIS_TREE_UNMARK("U", vis_node_ref(y), false); /*VIS*/
+                    DSA_VIS_ONLY(vis_attach_root(y, x));
+                    DSA_VIS_STEP(std::string("UnionRandomly：将代表元 ") + std::to_string(x) + " 挂到代表元 " + std::to_string(y) + " 下，两个集合合并"); /*VIS*/
+                    DSA_VIS_ONLY(vis_unfocus_roots(x, y));
                 }
                 /**
                  * @brief 按秩合并 (Union by Rank) 的 Union 操作。
@@ -143,25 +134,22 @@ namespace DSA
                     x = Find(x), y = Find(y);// 找到各自的根。
                     if (x == y)
                     {
-                        DSA_VIS_MSG(std::string("UnionByRank 跳过：") + std::to_string(x) + " 与 " + std::to_string(y) + " 已连通", true); /*VIS*/
+                        DSA_VIS_STEP(std::string("UnionByRank 跳过：两个元素代表元同为 ") + std::to_string(x) + "，已经连通"); /*VIS*/
                         return;
                     }
-                    DSA_VIS_MSG(std::string("UnionByRank：尝试合并根 ") + std::to_string(x) + " 与 " + std::to_string(y), true); /*VIS*/
-                    DSA_VIS_TREE_MARK("U", vis_node_ref(x), false); /*VIS*/
-                    DSA_VIS_TREE_MARK("U", vis_node_ref(y), false); /*VIS*/
+                    DSA_VIS_ONLY(vis_focus_roots(x, y));
+                    DSA_VIS_STEP(std::string("UnionByRank：比较代表元 ") + std::to_string(x) + "(rank=" + std::to_string(rnk[x]) + ") 和 " + std::to_string(y) + "(rank=" + std::to_string(rnk[y]) + ")");
                     if (rnk[x] > rnk[y])// 确保 x 是秩较小的树的根。
                         std::swap(x, y);
-                    DSA_VIS_MSG(std::string("按秩合并：") + std::to_string(x) + " -> " + std::to_string(y), false); /*VIS*/
+                    bool same_rank_before_merge = (rnk[x] == rnk[y]);
                     parent[x] = y;// 将秩小的树接到秩大的树下。
-                    DSA_VIS_TREE_ADD_CHILD("U", vis_node_ref(y), vis_node_ref(x), true); /*VIS*/
                     size[y] += size[x];
                     // 如果两棵树的秩相同，合并后新树的秩需要加 1。
                     if (rnk[x] == rnk[y])
                         ++rnk[y];
-                    DSA_VIS_TREE_SET_NOTE("U", vis_node_ref(x), vis_node_note(x), false); /*VIS*/
-                    DSA_VIS_TREE_SET_NOTE("U", vis_node_ref(y), vis_node_note(y), false); /*VIS*/
-                    DSA_VIS_TREE_UNMARK("U", vis_node_ref(x), false); /*VIS*/
-                    DSA_VIS_TREE_UNMARK("U", vis_node_ref(y), false); /*VIS*/
+                    DSA_VIS_ONLY(vis_attach_root(y, x));
+                    DSA_VIS_STEP(std::string("按秩合并：rank 较小的代表元 ") + std::to_string(x) + " 挂到 " + std::to_string(y) + " 下" + (same_rank_before_merge ? "，原 rank 相同所以新根 rank +1" : "")); /*VIS*/
+                    DSA_VIS_ONLY(vis_unfocus_roots(x, y));
                 }
                 
                 /**
@@ -174,23 +162,19 @@ namespace DSA
                     x = Find(x), y = Find(y);// 找到各自的根。
                     if (x == y)
                     {
-                        DSA_VIS_MSG(std::string("UnionBySize 跳过：") + std::to_string(x) + " 与 " + std::to_string(y) + " 已连通", true); /*VIS*/
+                        DSA_VIS_STEP(std::string("UnionBySize 跳过：两个元素代表元同为 ") + std::to_string(x) + "，已经连通"); /*VIS*/
                         return;
                     }
-                    DSA_VIS_MSG(std::string("UnionBySize：尝试合并根 ") + std::to_string(x) + " 与 " + std::to_string(y), true); /*VIS*/
-                    DSA_VIS_TREE_MARK("U", vis_node_ref(x), false); /*VIS*/
-                    DSA_VIS_TREE_MARK("U", vis_node_ref(y), false); /*VIS*/
+                    DSA_VIS_ONLY(vis_focus_roots(x, y));
+                    DSA_VIS_STEP(std::string("UnionBySize：比较代表元 ") + std::to_string(x) + "(size=" + std::to_string(size[x]) + ") 和 " + std::to_string(y) + "(size=" + std::to_string(size[y]) + ")");
                     if (size[x] > size[y])// 确保 x 是较小集合的根。
                         std::swap(x, y);
-                    DSA_VIS_MSG(std::string("按大小合并：") + std::to_string(x) + " -> " + std::to_string(y), false); /*VIS*/
                     parent[x] = y;// 将小集合接到大集合下。
-                    DSA_VIS_TREE_ADD_CHILD("U", vis_node_ref(y), vis_node_ref(x), true); /*VIS*/
                     size[y] += size[x];// 更新合并后集合的大小。
                     rnk[y] = std::max(rnk[y], rnk[x] + 1);
-                    DSA_VIS_TREE_SET_NOTE("U", vis_node_ref(x), vis_node_note(x), false); /*VIS*/
-                    DSA_VIS_TREE_SET_NOTE("U", vis_node_ref(y), vis_node_note(y), false); /*VIS*/
-                    DSA_VIS_TREE_UNMARK("U", vis_node_ref(x), false); /*VIS*/
-                    DSA_VIS_TREE_UNMARK("U", vis_node_ref(y), false); /*VIS*/
+                    DSA_VIS_ONLY(vis_attach_root(y, x));
+                    DSA_VIS_STEP(std::string("按大小合并：较小集合代表元 ") + std::to_string(x) + " 挂到较大集合代表元 " + std::to_string(y) + " 下");
+                    DSA_VIS_ONLY(vis_unfocus_roots(x, y));
                 }
                 // Union 操作的默认实现，调用按秩合并版本。
                 void Union(int x, int y)
@@ -215,6 +199,32 @@ namespace DSA
                     return std::string("p=") + std::to_string(parent[x]) +
                            ",s=" + std::to_string(size[x]) +
                            ",r=" + std::to_string(rnk[x]);
+                }
+
+                void vis_focus_roots(int x, int y) const
+                {
+                    DSA_VIS_TREE_MARK("U", vis_node_ref(x), false);
+                    DSA_VIS_TREE_MARK("U", vis_node_ref(y), false);
+                }
+
+                void vis_unfocus_roots(int x, int y) const
+                {
+                    DSA_VIS_TREE_UNMARK("U", vis_node_ref(x), false);
+                    DSA_VIS_TREE_UNMARK("U", vis_node_ref(y), false);
+                }
+
+                void vis_reparent_node(int new_parent, int child) const
+                {
+                    DSA_VIS_TREE_ADD_CHILD("U", vis_node_ref(new_parent), vis_node_ref(child), false);
+                    DSA_VIS_TREE_SET_NOTE("U", vis_node_ref(child), vis_node_note(child), false);
+                }
+
+                void vis_attach_root(int new_root, int old_root) const
+                {
+                    DSA_VIS_TREE_REMOVE_ROOT("U", vis_node_ref(old_root), false);
+                    DSA_VIS_TREE_ADD_CHILD("U", vis_node_ref(new_root), vis_node_ref(old_root), false);
+                    DSA_VIS_TREE_SET_NOTE("U", vis_node_ref(old_root), vis_node_note(old_root), false);
+                    DSA_VIS_TREE_SET_NOTE("U", vis_node_ref(new_root), vis_node_note(new_root), false);
                 }
             };
         }

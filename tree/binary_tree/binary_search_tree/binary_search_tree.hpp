@@ -186,8 +186,8 @@ namespace DSA
                     }
                     iterator erase(const_iterator iter)
                     {
-                        if (iter == this->end_ptr())
-                            return this->end_ptr();
+                        if (iter == this->cend())
+                            return this->end();
                         Node *p = this->getNode(iter);
                         return iterator{erase_pointer(p)};
                     }
@@ -360,8 +360,9 @@ namespace DSA
                     {
                         if (this->empty())
                         {
-                            /*VIS*/ DSA_VIS_MSG("BST 插入（unique）：空树建根", true);
-                            Node *root_node = insert_root(v); /*VIS*/ DSA_VIS_BT_SYNC("T", this->root(), true);
+                            /*VIS*/ DSA_VIS_STEP("BST 插入（unique）：空树，创建第一个节点作为根");
+                            Node *root_node = insert_root(v);
+                            /*VIS*/ DSA_VIS_STEP("BST 插入（unique）：根节点创建完成");
                             return {root_node, true};
                         }
                         const key_type &vk = skey(v);
@@ -377,16 +378,15 @@ namespace DSA
                                 node = p->left();
                             else
                             {
-                                /*VIS*/ DSA_VIS_MSG("BST 插入（unique）：发现重复键，跳过插入", true);
+                                /*VIS*/ DSA_VIS_STEP("BST 插入（unique）：发现重复键，跳过插入");
                                 return {p, false};
                             }
                         }
-                        /*VIS*/ DSA_VIS_MSG("BST 插入（unique）：挂接新节点", false);
+                        /*VIS*/ DSA_VIS_NOTE("BST 插入（unique）：已找到插入位置，准备挂接新节点");
                         node = insert_to(insert_right, v, p);
                         // 如果需要，向上更新路径上的增强数据
                         may_update_path(node);
-                        /*VIS*/ DSA_VIS_BT_SYNC("T", this->root(), true);
-                        /*VIS*/ DSA_VIS_MSG("BST 插入（unique）完成", false);
+                        /*VIS*/ DSA_VIS_STEP(insert_right ? "BST 插入（unique）：新节点已挂到父节点右侧" : "BST 插入（unique）：新节点已挂到父节点左侧");
                         // 为派生类（如红黑树）提供插入后的处理钩子（如重新平衡）
                         insert_hook(node);
                         return {node, true};
@@ -395,8 +395,9 @@ namespace DSA
                     {
                         if (this->empty())
                         {
-                            /*VIS*/ DSA_VIS_MSG("BST 插入（multi）：空树建根", true);
-                            Node *root_node = insert_root(v); /*VIS*/ DSA_VIS_BT_SYNC("T", this->root(), true);
+                            /*VIS*/ DSA_VIS_STEP("BST 插入（multi）：空树，创建第一个节点作为根");
+                            Node *root_node = insert_root(v);
+                            /*VIS*/ DSA_VIS_STEP("BST 插入（multi）：根节点创建完成");
                             return root_node;
                         }
                         const key_type &vk = skey(v);
@@ -414,12 +415,11 @@ namespace DSA
                             else
                                 node = p->left();
                         }
-                        /*VIS*/ DSA_VIS_MSG("BST 插入（multi）：挂接新节点", false);
+                        /*VIS*/ DSA_VIS_NOTE("BST 插入（multi）：已找到插入位置，准备挂接新节点");
                         node = insert_to(insert_right, v, p);
                         // 如果需要，向上更新路径上的增强数据
                         may_update_path(node);
-                        /*VIS*/ DSA_VIS_BT_SYNC("T", this->root(), true);
-                        /*VIS*/ DSA_VIS_MSG("BST 插入（multi）完成", false);
+                        /*VIS*/ DSA_VIS_STEP(insert_right ? "BST 插入（multi）：新节点已挂到父节点右侧" : "BST 插入（multi）：新节点已挂到父节点左侧");
                         // 为派生类（如红黑树）提供插入后的处理钩子（如重新平衡）
                         insert_hook(node);
                         return node;
@@ -427,7 +427,7 @@ namespace DSA
                     Node *insert_root(const T &v)
                     {
                         size_r = 1;
-                        /*VIS*/ DSA_VIS_MSG("BST 建立根节点", false);
+                        /*VIS*/ DSA_VIS_NOTE("BST 建立根节点");
                         Node *p = this->createNodeInternal(v); /*VIS*/ DSA_VIS_BT_NEW_NODE("T", p, p->value(), false);
                         this->solo_root(p); /*VIS*/ DSA_VIS_BT_SET_ROOT("T", p, false);
                         return p;
@@ -435,7 +435,7 @@ namespace DSA
                     Node *insert_to(const bool insert_right, const T &v, Node *p)
                     {
                         ++size_r;
-                        /*VIS*/ DSA_VIS_MSG(insert_right ? "BST 插入到父节点右子树" : "BST 插入到父节点左子树", false);
+                        /*VIS*/ DSA_VIS_NOTE(insert_right ? "BST 插入到父节点右子树" : "BST 插入到父节点左子树");
                         Node *node = this->createNodeInternal(v); /*VIS*/ DSA_VIS_BT_NEW_NODE("T", node, node->value(), false);
                         this->link_to(insert_right, node, p); /*VIS*/ DSA_VIS_BT_LINK("T", p, insert_right, node, false);
                         // 插入后，需要检查并更新缓存的leftmost和rightmost指针
@@ -455,20 +455,18 @@ namespace DSA
                     {
                         if (!p || p == this->end_ptr())
                             return this->end_ptr();
-                        /*VIS*/ DSA_VIS_MSG("BST 删除：定位目标节点", true);
+                        /*VIS*/ DSA_VIS_STEP("BST 删除：定位目标节点");
                         /*VIS*/ DSA_VIS_BT_MARK("T", p, false);
                         // 核心删除逻辑在tree_remove中，它负责处理拓扑关系
                         Node *np = tree_remove(p);
-                        /*VIS*/ DSA_VIS_MSG("BST 删除：完成拓扑移除，开始回溯更新", false);
+                        /*VIS*/ DSA_VIS_NOTE("BST 删除：完成拓扑移除，开始回溯更新");
                         // 向上更新路径
                         may_update_path(p->parent);
-                        /*VIS*/ DSA_VIS_BT_REMOVE_NODE("T", p, false);
-                        /*VIS*/ DSA_VIS_BT_SYNC("T", this->root(), true);
                         // 为派生类提供删除后的处理钩子
-                        erase_hook(p);
                         /*VIS*/ DSA_VIS_BT_UNMARK("T", p, false);
                         /*VIS*/ DSA_VIS_BT_DESTROY_NODE("T", p, false);
-                        /*VIS*/ DSA_VIS_MSG("BST 删除完成", false);
+                        erase_hook(p);
+                        /*VIS*/ DSA_VIS_NOTE("BST 删除完成");
                         // 释放节点内存
                         this->destroyNodeInternal(p);
                         // 返回指向被删除元素下一个元素的指针
@@ -523,8 +521,9 @@ namespace DSA
                         Node *res = this->next(p);
                         if (this->only_root())
                         {
-                            /*VIS*/ DSA_VIS_MSG("BST 删除：树仅有根节点，直接清空", false);
-                            this->remove_root();
+                            /*VIS*/ DSA_VIS_NOTE("BST 删除：树仅有根节点，直接清空");
+                            /*VIS*/ DSA_VIS_BT_REMOVE_NODE("T", p, false);
+                            this->remove_root(); /*VIS*/ DSA_VIS_BT_SET_ROOT("T", static_cast<Node *>(nullptr), false);
                             return res;
                         }
                         // 更新缓存的leftmost和rightmost
@@ -535,7 +534,7 @@ namespace DSA
                         // 情况1：p有两个孩子。这是最复杂的情况。
                         if (p->left() && p->right())
                         {
-                            /*VIS*/ DSA_VIS_MSG("BST 删除：目标有两个孩子，与后继交换拓扑", true);
+                            /*VIS*/ DSA_VIS_STEP("BST 删除：目标有两个孩子，先与中序后继交换拓扑");
                             // 不移动节点的值，而是交换p和其后继者res的“拓扑位置”。
                             // 调用tree_swap后，p节点被移动到了原本res所在的位置。
                             // 因为res是后继者，它保证了最多只有一个右孩子。
@@ -546,6 +545,7 @@ namespace DSA
                         // now p only has at most one child
                         Node *t = p->left() ? p->left() : p->right();
                         bool link_right = this->is_right(p);
+                        /*VIS*/ DSA_VIS_BT_REMOVE_NODE("T", p, false);
                         // --- 以下是为派生类（如红黑树）的 erase_hook 传递信息的技巧 ---
                         // 在断开p的连接之前，我们临时重用p的子指针来存储“删除上下文”。
                         // p的原始子指针之一现在指向它的替代者t。
@@ -557,22 +557,23 @@ namespace DSA
 
                         if (p == this->root())
                         {
-                            /*VIS*/ DSA_VIS_MSG("BST 删除：删除当前根节点，重设新根", true);
+                            /*VIS*/ DSA_VIS_STEP(t ? "BST 删除：删除当前根节点，由唯一子树接替为新根" : "BST 删除：删除当前根节点，树变为空");
                             // 如果删除的是根，让t成为新根，或者清空树
                             if (t)
                             {
-                                this->link_root(t);
+                                this->link_root(t); /*VIS*/ DSA_VIS_BT_SET_ROOT("T", t, false);
                             }
                             else
                             {
-                                this->remove_root();
+                                this->remove_root(); /*VIS*/ DSA_VIS_BT_SET_ROOT("T", static_cast<Node *>(nullptr), false);
                             }
                         }
                         else
                         {
-                            /*VIS*/ DSA_VIS_MSG("BST 删除：父节点绕过目标节点重连", false);
+                            /*VIS*/ DSA_VIS_STEP(t ? "BST 删除：父节点绕过目标节点，连接目标的唯一子树" : "BST 删除：父节点绕过目标节点，删除叶子位置");
                             // 将p的parent节点直接连接到t，绕过p。
-                            this->link_to(link_right, t, p->parent);
+                            Node *old_parent = p->parent;
+                            this->link_to(link_right, t, p->parent); /*VIS*/ DSA_VIS_BT_LINK("T", old_parent, link_right, t, false);
                         }
                         // 返回p的后继者，作为erase的返回值。
                         return res;

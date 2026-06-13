@@ -143,6 +143,16 @@ namespace DSA
                 WriteEvent("array", "sync", obj, args.str(), step, loc);
             }
 
+            template <typename RandIt>
+            void ArrayRebuild(const std::string &obj, RandIt first, RandIt last, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"values\":" << JsonArray(first, last) << "}";
+                WriteEvent("array", "rebuild", obj, args.str(), step, loc);
+            }
+
             void Mark(const std::string &obj, int i, SourceLoc loc, bool step = false)
             {
                 if (!active_)
@@ -255,6 +265,18 @@ namespace DSA
                 WriteEvent("btree", "rotate_right", obj, args.str(), step, loc);
             }
 
+            template <typename NodePtrA, typename NodePtrB>
+            void BTreeSwapTopology(const std::string &obj, NodePtrA a, NodePtrB b, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !a || !b)
+                    return;
+                EnsureBTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"a\":" << BTreeNodeRef(static_cast<const void *>(a))
+                     << ",\"b\":" << BTreeNodeRef(static_cast<const void *>(b)) << "}";
+                WriteEvent("btree", "swap_topology", obj, args.str(), step, loc);
+            }
+
             template <typename NodePtr>
             void BTreeSetNote(const std::string &obj, NodePtr node, const std::string &note, SourceLoc loc, bool step = false)
             {
@@ -352,6 +374,28 @@ namespace DSA
                 std::ostringstream args;
                 args << "{\"id\":" << TreeNodeRef(static_cast<const void *>(node)) << "}";
                 WriteEvent("tree", "set_root", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void TreeAddRoot(const std::string &obj, NodePtr node, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"id\":" << TreeNodeRef(static_cast<const void *>(node)) << "}";
+                WriteEvent("tree", "add_root", obj, args.str(), step, loc);
+            }
+
+            template <typename NodePtr>
+            void TreeRemoveRoot(const std::string &obj, NodePtr node, SourceLoc loc, bool step = false)
+            {
+                if (!active_ || !node)
+                    return;
+                EnsureTreeInit(obj, loc);
+                std::ostringstream args;
+                args << "{\"id\":" << TreeNodeRef(static_cast<const void *>(node)) << "}";
+                WriteEvent("tree", "remove_root", obj, args.str(), step, loc);
             }
 
             template <typename ParentPtr, typename ChildPtr>
@@ -476,6 +520,166 @@ namespace DSA
                 std::ostringstream args;
                 args << "{\"text\":\"" << Escape(text) << "\"}";
                 WriteEvent("meta", "msg", "_", args.str(), step, loc);
+            }
+
+            void StateInit(const std::string &obj, const std::string &kind, int rows, int cols, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"kind\":\"" << Escape(kind) << "\",\"rows\":" << rows << ",\"cols\":" << cols << "}";
+                WriteEvent("state", "init", obj, args.str(), step, loc);
+            }
+
+            void StateInitLabeled(
+                const std::string &obj,
+                const std::string &kind,
+                int rows,
+                int cols,
+                const std::string &title,
+                int row_base,
+                int col_base,
+                bool show_row_labels,
+                bool show_col_labels,
+                const std::string &axis,
+                SourceLoc loc,
+                bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"kind\":\"" << Escape(kind) << "\",\"rows\":" << rows << ",\"cols\":" << cols
+                     << ",\"title\":\"" << Escape(title) << "\""
+                     << ",\"rowBase\":" << row_base
+                     << ",\"colBase\":" << col_base
+                     << ",\"showRowLabels\":" << (show_row_labels ? "true" : "false")
+                     << ",\"showColLabels\":" << (show_col_labels ? "true" : "false")
+                     << ",\"axis\":\"" << Escape(axis) << "\"}";
+                WriteEvent("state", "init", obj, args.str(), step, loc);
+            }
+
+            template <typename T>
+            void StateSet(const std::string &obj, int row, int col, const T &value, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"row\":" << row << ",\"col\":" << col << ",\"value\":" << JsonValue(value) << "}";
+                WriteEvent("state", "set", obj, args.str(), step, loc);
+            }
+
+            void StateFocus(const std::string &obj, int row, int col, const std::string &role, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"row\":" << row << ",\"col\":" << col << ",\"role\":\"" << Escape(role) << "\"}";
+                WriteEvent("state", "focus", obj, args.str(), step, loc);
+            }
+
+            void StateClearFocus(const std::string &obj, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                WriteEvent("state", "clear_focus", obj, "{}", step, loc);
+            }
+
+            template <typename T>
+            void StateSeqPush(const std::string &obj, const T &value, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"value\":" << JsonValue(value) << "}";
+                WriteEvent("state", "seq_push", obj, args.str(), step, loc);
+            }
+
+            void StateSeqPop(const std::string &obj, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                WriteEvent("state", "seq_pop", obj, "{}", step, loc);
+            }
+
+            void StateSeqClear(const std::string &obj, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                WriteEvent("state", "seq_clear", obj, "{}", step, loc);
+            }
+
+            template <typename T>
+            void StateHistoryAppend(const std::string &obj, int row, int col, const T &value, const std::string &note, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"row\":" << row
+                     << ",\"col\":" << col
+                     << ",\"value\":" << JsonValue(value)
+                     << ",\"note\":\"" << Escape(note) << "\"}";
+                WriteEvent("state", "history_append", obj, args.str(), step, loc);
+            }
+
+            void StringInit(const std::string &obj, const std::string &text, const std::string &pattern, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"text\":\"" << Escape(text) << "\",\"pattern\":\"" << Escape(pattern) << "\"}";
+                WriteEvent("string", "init", obj, args.str(), step, loc);
+            }
+
+            void StringInitPattern(const std::string &obj, const std::string &pattern, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"mode\":\"self\",\"pattern\":\"" << Escape(pattern) << "\"}";
+                WriteEvent("string", "init", obj, args.str(), step, loc);
+            }
+
+            void StringAlign(const std::string &obj, int shift, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"shift\":" << shift << "}";
+                WriteEvent("string", "align", obj, args.str(), step, loc);
+            }
+
+            void StringCompare(const std::string &obj, int text_index, int pattern_index, bool match, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"i\":" << text_index << ",\"j\":" << pattern_index << ",\"match\":" << (match ? "true" : "false") << "}";
+                WriteEvent("string", "compare", obj, args.str(), step, loc);
+            }
+
+            void StringFallback(const std::string &obj, int from_j, int to_j, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"from\":" << from_j << ",\"to\":" << to_j << "}";
+                WriteEvent("string", "fallback", obj, args.str(), step, loc);
+            }
+
+            void StringAccept(const std::string &obj, int start, int length, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                std::ostringstream args;
+                args << "{\"start\":" << start << ",\"length\":" << length << "}";
+                WriteEvent("string", "accept", obj, args.str(), step, loc);
+            }
+
+            void StringClear(const std::string &obj, SourceLoc loc, bool step = false)
+            {
+                if (!active_)
+                    return;
+                WriteEvent("string", "clear", obj, "{}", step, loc);
             }
 
             void EnsureGraphInit(const std::string &obj, bool directed, SourceLoc loc)
@@ -845,6 +1049,12 @@ namespace DSA
 }
 
 #if defined(DSA_VIS_ENABLE)
+#define DSA_VIS_ONLY(stmt) \
+    do                     \
+    {                      \
+        stmt;              \
+    } while (false)
+#define DSA_VIS_DECL(stmt) stmt
 #define DSA_VIS_BEGIN(path) ::DSA::Vis::Logger::Global().Begin(path)
 #define DSA_VIS_END() ::DSA::Vis::Logger::Global().End()
 #define DSA_VIS_SET_ARRAY_OBJECTS(primary_name, buffer_name) ::DSA::Vis::Logger::Global().SetArrayNames((primary_name), (buffer_name))
@@ -858,6 +1068,7 @@ namespace DSA
 #define DSA_VIS_ARR_SWAP(obj, i, j, step) ::DSA::Vis::Logger::Global().Swap((obj), (i), (j), DSA_VIS_LOC, (step))
 #define DSA_VIS_ARR_SET(obj, i, v, step) ::DSA::Vis::Logger::Global().Set((obj), (i), (v), DSA_VIS_LOC, (step))
 #define DSA_VIS_ARR_SYNC(obj, first, last, step) ::DSA::Vis::Logger::Global().SyncArray((obj), (first), (last), DSA_VIS_LOC, (step))
+#define DSA_VIS_ARR_REBUILD(obj, first, last, step) ::DSA::Vis::Logger::Global().ArrayRebuild((obj), (first), (last), DSA_VIS_LOC, (step))
 #define DSA_VIS_ARR_MARK(obj, i, step) ::DSA::Vis::Logger::Global().Mark((obj), (i), DSA_VIS_LOC, (step))
 #define DSA_VIS_ARR_UNMARK(obj, i, step) ::DSA::Vis::Logger::Global().Unmark((obj), (i), DSA_VIS_LOC, (step))
 #define DSA_VIS_BT_INIT(obj) ::DSA::Vis::Logger::Global().EnsureBTreeInit((obj), DSA_VIS_LOC)
@@ -868,6 +1079,7 @@ namespace DSA
 #define DSA_VIS_BT_DESTROY_NODE(obj, node, step) ::DSA::Vis::Logger::Global().BTreeDestroyNode((obj), (node), DSA_VIS_LOC, (step))
 #define DSA_VIS_BT_ROTATE_LEFT(obj, pivot, step) ::DSA::Vis::Logger::Global().BTreeRotateLeft((obj), (pivot), DSA_VIS_LOC, (step))
 #define DSA_VIS_BT_ROTATE_RIGHT(obj, pivot, step) ::DSA::Vis::Logger::Global().BTreeRotateRight((obj), (pivot), DSA_VIS_LOC, (step))
+#define DSA_VIS_BT_SWAP_TOPOLOGY(obj, a, b, step) ::DSA::Vis::Logger::Global().BTreeSwapTopology((obj), (a), (b), DSA_VIS_LOC, (step))
 #define DSA_VIS_BT_SET_NOTE(obj, node, note, step) ::DSA::Vis::Logger::Global().BTreeSetNote((obj), (node), (note), DSA_VIS_LOC, (step))
 #define DSA_VIS_BT_SET_COLOR(obj, node, color, step) ::DSA::Vis::Logger::Global().BTreeSetColor((obj), (node), (color), DSA_VIS_LOC, (step))
 #define DSA_VIS_BT_MARK(obj, node, step) ::DSA::Vis::Logger::Global().BTreeMark((obj), (node), DSA_VIS_LOC, (step))
@@ -876,6 +1088,8 @@ namespace DSA
 #define DSA_VIS_TREE_INIT(obj) ::DSA::Vis::Logger::Global().EnsureTreeInit((obj), DSA_VIS_LOC)
 #define DSA_VIS_TREE_NEW_NODE(obj, node, value, step) ::DSA::Vis::Logger::Global().TreeNewNode((obj), (node), (value), DSA_VIS_LOC, (step))
 #define DSA_VIS_TREE_SET_ROOT(obj, node, step) ::DSA::Vis::Logger::Global().TreeSetRoot((obj), (node), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_ADD_ROOT(obj, node, step) ::DSA::Vis::Logger::Global().TreeAddRoot((obj), (node), DSA_VIS_LOC, (step))
+#define DSA_VIS_TREE_REMOVE_ROOT(obj, node, step) ::DSA::Vis::Logger::Global().TreeRemoveRoot((obj), (node), DSA_VIS_LOC, (step))
 #define DSA_VIS_TREE_ADD_CHILD(obj, parent, child, step) ::DSA::Vis::Logger::Global().TreeAddChild((obj), (parent), (child), DSA_VIS_LOC, (step))
 #define DSA_VIS_TREE_SET_CHILD(obj, parent, pos, child, step) ::DSA::Vis::Logger::Global().TreeSetChild((obj), (parent), (pos), (child), DSA_VIS_LOC, (step))
 #define DSA_VIS_TREE_REMOVE_NODE(obj, node, step) ::DSA::Vis::Logger::Global().TreeRemoveNode((obj), (node), DSA_VIS_LOC, (step))
@@ -887,6 +1101,29 @@ namespace DSA
 #define DSA_VIS_TREE_HIDE_NODE(obj, node, step) ::DSA::Vis::Logger::Global().TreeHideNode((obj), (node), DSA_VIS_LOC, (step))
 #define DSA_VIS_TREE_SHOW_NODE(obj, node, step) ::DSA::Vis::Logger::Global().TreeShowNode((obj), (node), DSA_VIS_LOC, (step))
 #define DSA_VIS_MSG(text, step) ::DSA::Vis::Logger::Global().Message((text), DSA_VIS_LOC, (step))
+#define DSA_VIS_STEP(text) DSA_VIS_MSG((text), true)
+#define DSA_VIS_NOTE(text) DSA_VIS_MSG((text), false)
+#define DSA_VIS_STATE_INIT(obj, kind, rows, cols, step) ::DSA::Vis::Logger::Global().StateInit((obj), (kind), (rows), (cols), DSA_VIS_LOC, (step))
+#define DSA_VIS_STATE_INIT_MATRIX(obj, rows, cols, step) DSA_VIS_STATE_INIT((obj), "matrix", (rows), (cols), (step))
+#define DSA_VIS_STATE_INIT_TABLE(obj, rows, cols, step) DSA_VIS_STATE_INIT((obj), "table", (rows), (cols), (step))
+#define DSA_VIS_STATE_INIT_VECTOR(obj, cols, step) DSA_VIS_STATE_INIT((obj), "vector", 1, (cols), (step))
+#define DSA_VIS_STATE_INIT_LABELED(obj, kind, rows, cols, title, row_base, col_base, show_row_labels, show_col_labels, axis, step) ::DSA::Vis::Logger::Global().StateInitLabeled((obj), (kind), (rows), (cols), (title), (row_base), (col_base), (show_row_labels), (show_col_labels), (axis), DSA_VIS_LOC, (step))
+#define DSA_VIS_STATE_INIT_VECTOR_LABELED(obj, cols, title, col_base, axis, step) DSA_VIS_STATE_INIT_LABELED((obj), "vector", 1, (cols), (title), 0, (col_base), false, true, (axis), (step))
+#define DSA_VIS_STATE_INIT_MATRIX_LABELED(obj, rows, cols, title, row_base, col_base, axis, step) DSA_VIS_STATE_INIT_LABELED((obj), "matrix", (rows), (cols), (title), (row_base), (col_base), true, true, (axis), (step))
+#define DSA_VIS_STATE_SET(obj, row, col, value, step) ::DSA::Vis::Logger::Global().StateSet((obj), (row), (col), (value), DSA_VIS_LOC, (step))
+#define DSA_VIS_STATE_FOCUS(obj, row, col, role, step) ::DSA::Vis::Logger::Global().StateFocus((obj), (row), (col), (role), DSA_VIS_LOC, (step))
+#define DSA_VIS_STATE_CLEAR_FOCUS(obj, step) ::DSA::Vis::Logger::Global().StateClearFocus((obj), DSA_VIS_LOC, (step))
+#define DSA_VIS_STATE_HISTORY(obj, row, col, value, note, step) ::DSA::Vis::Logger::Global().StateHistoryAppend((obj), (row), (col), (value), (note), DSA_VIS_LOC, (step))
+#define DSA_VIS_STATE_SEQ_PUSH(obj, value, step) ::DSA::Vis::Logger::Global().StateSeqPush((obj), (value), DSA_VIS_LOC, (step))
+#define DSA_VIS_STATE_SEQ_POP(obj, step) ::DSA::Vis::Logger::Global().StateSeqPop((obj), DSA_VIS_LOC, (step))
+#define DSA_VIS_STATE_SEQ_CLEAR(obj, step) ::DSA::Vis::Logger::Global().StateSeqClear((obj), DSA_VIS_LOC, (step))
+#define DSA_VIS_STR_INIT(obj, text, pattern, step) ::DSA::Vis::Logger::Global().StringInit((obj), (text), (pattern), DSA_VIS_LOC, (step))
+#define DSA_VIS_STR_INIT_PATTERN(obj, pattern, step) ::DSA::Vis::Logger::Global().StringInitPattern((obj), (pattern), DSA_VIS_LOC, (step))
+#define DSA_VIS_STR_ALIGN(obj, shift, step) ::DSA::Vis::Logger::Global().StringAlign((obj), (shift), DSA_VIS_LOC, (step))
+#define DSA_VIS_STR_COMPARE(obj, text_index, pattern_index, match, step) ::DSA::Vis::Logger::Global().StringCompare((obj), (text_index), (pattern_index), (match), DSA_VIS_LOC, (step))
+#define DSA_VIS_STR_FALLBACK(obj, from_j, to_j, step) ::DSA::Vis::Logger::Global().StringFallback((obj), (from_j), (to_j), DSA_VIS_LOC, (step))
+#define DSA_VIS_STR_ACCEPT(obj, start, length, step) ::DSA::Vis::Logger::Global().StringAccept((obj), (start), (length), DSA_VIS_LOC, (step))
+#define DSA_VIS_STR_CLEAR(obj, step) ::DSA::Vis::Logger::Global().StringClear((obj), DSA_VIS_LOC, (step))
 #define DSA_VIS_G_INIT(obj, directed) ::DSA::Vis::Logger::Global().EnsureGraphInit((obj), (directed), DSA_VIS_LOC)
 #define DSA_VIS_G_NEW_NODE(obj, node, value, step) ::DSA::Vis::Logger::Global().GraphNewNode((obj), (node), (value), DSA_VIS_LOC, (step))
 #define DSA_VIS_G_REMOVE_NODE(obj, node, step) ::DSA::Vis::Logger::Global().GraphRemoveNode((obj), (node), DSA_VIS_LOC, (step))
@@ -903,6 +1140,11 @@ namespace DSA
 #define DSA_VIS_G_UNMARK_EDGE(obj, from, to, step) ::DSA::Vis::Logger::Global().GraphUnmarkEdge((obj), (from), (to), DSA_VIS_LOC, (step))
 #define DSA_VIS_G_LAYOUT(obj, step) ::DSA::Vis::Logger::Global().GraphForceLayout((obj), DSA_VIS_LOC, (step))
 #else
+#define DSA_VIS_ONLY(stmt) \
+    do                     \
+    {                      \
+    } while (false)
+#define DSA_VIS_DECL(stmt)
 #define DSA_VIS_BEGIN(path) ((void)0)
 #define DSA_VIS_END() ((void)0)
 #define DSA_VIS_SET_ARRAY_OBJECTS(primary_name, buffer_name) ((void)0)
@@ -916,6 +1158,7 @@ namespace DSA
 #define DSA_VIS_ARR_SWAP(obj, i, j, step) ((void)0)
 #define DSA_VIS_ARR_SET(obj, i, v, step) ((void)0)
 #define DSA_VIS_ARR_SYNC(obj, first, last, step) ((void)0)
+#define DSA_VIS_ARR_REBUILD(obj, first, last, step) ((void)0)
 #define DSA_VIS_ARR_MARK(obj, i, step) ((void)0)
 #define DSA_VIS_ARR_UNMARK(obj, i, step) ((void)0)
 #define DSA_VIS_BT_INIT(obj) ((void)0)
@@ -926,6 +1169,7 @@ namespace DSA
 #define DSA_VIS_BT_DESTROY_NODE(obj, node, step) ((void)0)
 #define DSA_VIS_BT_ROTATE_LEFT(obj, pivot, step) ((void)0)
 #define DSA_VIS_BT_ROTATE_RIGHT(obj, pivot, step) ((void)0)
+#define DSA_VIS_BT_SWAP_TOPOLOGY(obj, a, b, step) ((void)0)
 #define DSA_VIS_BT_SET_NOTE(obj, node, note, step) ((void)0)
 #define DSA_VIS_BT_SET_COLOR(obj, node, color, step) ((void)0)
 #define DSA_VIS_BT_MARK(obj, node, step) ((void)0)
@@ -934,6 +1178,8 @@ namespace DSA
 #define DSA_VIS_TREE_INIT(obj) ((void)0)
 #define DSA_VIS_TREE_NEW_NODE(obj, node, value, step) ((void)0)
 #define DSA_VIS_TREE_SET_ROOT(obj, node, step) ((void)0)
+#define DSA_VIS_TREE_ADD_ROOT(obj, node, step) ((void)0)
+#define DSA_VIS_TREE_REMOVE_ROOT(obj, node, step) ((void)0)
 #define DSA_VIS_TREE_ADD_CHILD(obj, parent, child, step) ((void)0)
 #define DSA_VIS_TREE_SET_CHILD(obj, parent, pos, child, step) ((void)0)
 #define DSA_VIS_TREE_REMOVE_NODE(obj, node, step) ((void)0)
@@ -945,6 +1191,29 @@ namespace DSA
 #define DSA_VIS_TREE_HIDE_NODE(obj, node, step) ((void)0)
 #define DSA_VIS_TREE_SHOW_NODE(obj, node, step) ((void)0)
 #define DSA_VIS_MSG(text, step) ((void)0)
+#define DSA_VIS_STEP(text) ((void)0)
+#define DSA_VIS_NOTE(text) ((void)0)
+#define DSA_VIS_STATE_INIT(obj, kind, rows, cols, step) ((void)0)
+#define DSA_VIS_STATE_INIT_MATRIX(obj, rows, cols, step) ((void)0)
+#define DSA_VIS_STATE_INIT_TABLE(obj, rows, cols, step) ((void)0)
+#define DSA_VIS_STATE_INIT_VECTOR(obj, cols, step) ((void)0)
+#define DSA_VIS_STATE_INIT_LABELED(obj, kind, rows, cols, title, row_base, col_base, show_row_labels, show_col_labels, axis, step) ((void)0)
+#define DSA_VIS_STATE_INIT_VECTOR_LABELED(obj, cols, title, col_base, axis, step) ((void)0)
+#define DSA_VIS_STATE_INIT_MATRIX_LABELED(obj, rows, cols, title, row_base, col_base, axis, step) ((void)0)
+#define DSA_VIS_STATE_SET(obj, row, col, value, step) ((void)0)
+#define DSA_VIS_STATE_FOCUS(obj, row, col, role, step) ((void)0)
+#define DSA_VIS_STATE_CLEAR_FOCUS(obj, step) ((void)0)
+#define DSA_VIS_STATE_HISTORY(obj, row, col, value, note, step) ((void)0)
+#define DSA_VIS_STATE_SEQ_PUSH(obj, value, step) ((void)0)
+#define DSA_VIS_STATE_SEQ_POP(obj, step) ((void)0)
+#define DSA_VIS_STATE_SEQ_CLEAR(obj, step) ((void)0)
+#define DSA_VIS_STR_INIT(obj, text, pattern, step) ((void)0)
+#define DSA_VIS_STR_INIT_PATTERN(obj, pattern, step) ((void)0)
+#define DSA_VIS_STR_ALIGN(obj, shift, step) ((void)0)
+#define DSA_VIS_STR_COMPARE(obj, text_index, pattern_index, match, step) ((void)0)
+#define DSA_VIS_STR_FALLBACK(obj, from_j, to_j, step) ((void)0)
+#define DSA_VIS_STR_ACCEPT(obj, start, length, step) ((void)0)
+#define DSA_VIS_STR_CLEAR(obj, step) ((void)0)
 #define DSA_VIS_G_INIT(obj, directed) ((void)0)
 #define DSA_VIS_G_NEW_NODE(obj, node, value, step) ((void)0)
 #define DSA_VIS_G_REMOVE_NODE(obj, node, step) ((void)0)

@@ -7,6 +7,7 @@
 #include <exception>
 #include <iostream>
 #include <sstream>
+#include "sorting_vis.hpp"
 #include "../vis_trace.hpp"
 namespace DSA
 {
@@ -41,32 +42,35 @@ namespace DSA
             if (n <= 1)
                 return;
             auto arr = first;
-            /*VIS*/ DSA_VIS_ARR_INIT("A", first, last);
-            /*VIS*/ DSA_VIS_ARR_FOCUS("A", 0, n, false);
-            /*VIS*/ DSA_VIS_MSG(std::string("选择排序开始：n=") + std::to_string(n), true);
+            DSA_SORT_FOCUS_RANGE("A", first, last);
+            DSA_SORT_STEP(std::string("选择排序开始：n=") + std::to_string(n));
             // 外层循环：每次确定一个位置（从0到n-2）的最终元素
             for (int i = 0; i < n - 1; i++)
             {
+                DSA_SORT_STEP(std::string("选择排序第 ") + std::to_string(Vis::Index(arr, i)) + " 轮：在未排序区间 [" + std::to_string(Vis::Index(arr, i)) + "," + std::to_string(Vis::Index(arr, n)) + ") 中寻找最小值");
                 // `ith` 用于记录当前找到的最小元素的索引
                 int ith = i;
                 // 内层循环：在未排序部分 arr[i+1...n-1] 中寻找最小的元素
                 for (int j = i + 1; j < n; j++)
                 {
                     if (arr[j] < arr[ith])
+                    {
                         ith = j; // 如果发现更小的，就更新最小元素的索引
+                        DSA_SORT_STEP(std::string("选择排序：发现新的最小值下标 ") + std::to_string(Vis::Index(arr, ith)));
+                    }
                 }
                 // 将找到的最小元素与当前位置i的元素交换
                 if (ith != i)
                 {
-                    /*VIS*/ DSA_VIS_MSG(std::string("第 ") + std::to_string(i) + " 轮：将最小值下标 " + std::to_string(ith) + " 交换到位置 " + std::to_string(i), false);
-                    /*VIS*/ DSA_VIS_ARR_MARK("A", i, false);
-                    /*VIS*/ DSA_VIS_ARR_MARK("A", ith, false);
-                    std::swap(arr[ith], arr[i]); /*VIS*/ DSA_VIS_ARR_SWAP("A", i, ith, true);
-                    /*VIS*/ DSA_VIS_ARR_UNMARK("A", i, false);
-                    /*VIS*/ DSA_VIS_ARR_UNMARK("A", ith, false);
+                    std::swap(arr[ith], arr[i]);
+                    DSA_SORT_SWAP_EVENT(arr, i, ith, std::string("选择排序第 ") + std::to_string(Vis::Index(arr, i)) + " 轮完成：将最小值下标 " + std::to_string(Vis::Index(arr, ith)) + " 交换到有序区末尾 " + std::to_string(Vis::Index(arr, i)));
+                }
+                else
+                {
+                    DSA_SORT_STEP(std::string("选择排序第 ") + std::to_string(Vis::Index(arr, i)) + " 轮完成：当前位置已经是未排序区间最小值，无需交换");
                 }
             }
-            /*VIS*/ DSA_VIS_MSG("选择排序结束", false);
+            DSA_SORT_STEP("选择排序结束");
         }
 
         /**
@@ -89,29 +93,29 @@ namespace DSA
             if (n <= 1)
                 return;
             auto arr = first;
-            /*VIS*/ DSA_VIS_ARR_INIT("A", first, last);
-            /*VIS*/ DSA_VIS_ARR_FOCUS("A", 0, n, false);
-            /*VIS*/ DSA_VIS_MSG(std::string("冒泡排序开始：n=") + std::to_string(n), true);
+            DSA_SORT_FOCUS_RANGE("A", first, last);
+            DSA_SORT_STEP(std::string("冒泡排序开始：n=") + std::to_string(n));
             bool flag = true; // 如果在一轮遍历中没有发生任何交换，说明数组已经有序，可以提前终止。
             while (flag)
             {
                 flag = false;
+                DSA_SORT_STEP("冒泡排序新一轮扫描：相邻逆序对会被交换，较大值向右移动");
                 // 每一轮内层循环都会将一个未排序部分的最大值“冒泡”到正确的位置
                 for (int i = 0; i < n - 1; i++)
                 {
                     if (arr[i + 1] < arr[i])
                     {
                         flag = true; // 发生了交换，说明可能还未完全有序
-                        /*VIS*/ DSA_VIS_MSG(std::string("交换逆序对：") + std::to_string(i) + " <-> " + std::to_string(i + 1), false);
-                        /*VIS*/ DSA_VIS_ARR_MARK("A", i, false);
-                        /*VIS*/ DSA_VIS_ARR_MARK("A", i + 1, false);
-                        std::swap(arr[i], arr[i + 1]); /*VIS*/ DSA_VIS_ARR_SWAP("A", i, i + 1, true);
-                        /*VIS*/ DSA_VIS_ARR_UNMARK("A", i, false);
-                        /*VIS*/ DSA_VIS_ARR_UNMARK("A", i + 1, false);
+                        std::swap(arr[i], arr[i + 1]);
+                        DSA_SORT_SWAP_EVENT(arr, i, i + 1, std::string("冒泡排序交换逆序对：") + std::to_string(Vis::Index(arr, i)) + " <-> " + std::to_string(Vis::Index(arr, i + 1)));
                     }
                 }
+                if (!flag)
+                    DSA_SORT_STEP("冒泡排序本轮没有发生交换，数组已经有序");
+                else
+                    DSA_SORT_STEP("冒泡排序本轮发生过交换，继续下一轮扫描");
             }
-            /*VIS*/ DSA_VIS_MSG("冒泡排序结束", false);
+            DSA_SORT_STEP("冒泡排序结束");
         }
 
         /**
@@ -134,25 +138,28 @@ namespace DSA
             if (n <= 1)
                 return;
             auto arr = first;
-            /*VIS*/ DSA_VIS_ARR_INIT("A", first, last);
-            /*VIS*/ DSA_VIS_ARR_FOCUS("A", 0, n, false);
-            /*VIS*/ DSA_VIS_MSG(std::string("插入排序开始：n=") + std::to_string(n), true);
+            DSA_SORT_FOCUS_RANGE("A", first, last);
+            DSA_SORT_STEP(std::string("插入排序开始：n=") + std::to_string(n));
             // 外层循环：从第二个元素开始（i=1），逐个将其插入到前面已排序的子数组中
             for (int i = 1, j; i < n; i++)
             {
                 // 暂存当前需要被插入的元素
                 auto tmp = arr[i];
-                /*VIS*/ DSA_VIS_MSG(std::string("处理下标 ") + std::to_string(i) + "，向有序区插入", false);
+                DSA_SORT_STEP(std::string("插入排序处理下标 ") + std::to_string(Vis::Index(arr, i)) + "：向前面的有序区插入");
                 // 内层循环：从已排序部分的末尾向前查找插入位置
                 // 当 j>=0 (防止越界) 且 tmp 小于当前比较的元素 arr[j] 时
                 for (j = i - 1; j >= 0 && tmp < arr[j]; j--)
                 {
-                    arr[j + 1] = arr[j]; /*VIS*/ DSA_VIS_ARR_SET("A", j + 1, arr[j + 1], true); // 将比tmp大的元素向后移动一位
+                    arr[j + 1] = arr[j]; // 将比tmp大的元素向后移动一位
+                    DSA_SORT_SET_AT("A", arr + j + 1, arr[j + 1], std::string("插入排序右移元素：") + std::to_string(Vis::Index(arr, j)) + " -> " + std::to_string(Vis::Index(arr, j + 1)));
                 }
                 // 循环结束时，j+1 就是tmp的正确插入位置
-                arr[j + 1] = tmp; /*VIS*/ DSA_VIS_ARR_SET("A", j + 1, arr[j + 1], (j + 1 != i));
+                arr[j + 1] = tmp;
+                DSA_SORT_SET_AT("A", arr + j + 1, arr[j + 1], std::string("插入排序把暂存值放入下标 ") + std::to_string(Vis::Index(arr, j + 1)), j + 1 != i);
+                if (j + 1 == i)
+                    DSA_SORT_STEP(std::string("插入排序：下标 ") + std::to_string(Vis::Index(arr, i)) + " 的元素不小于前驱，位置不变");
             }
-            /*VIS*/ DSA_VIS_MSG("插入排序结束", false);
+            DSA_SORT_STEP("插入排序结束");
         }
 
         // --- 快速排序的辅助组件 ---
@@ -209,19 +216,20 @@ namespace DSA
          *         注意：此处的实现返回的分割点不是 pivot 最终的位置，而是下一个子区间的起始点。
          */
         template <typename RandIt, typename Sampler>
-        RandIt Partition(RandIt first, RandIt last, Sampler &sampler, RandIt base_first)
+        RandIt Partition(RandIt first, RandIt last, Sampler &sampler)
         {
             int low = 0, high = std::distance(first, last) - 1;
             if (high <= 0)
                 return first;
             auto arr = first;
-            int base_offset = static_cast<int>(first - base_first);
-            /*VIS*/ DSA_VIS_ARR_FOCUS("A", base_offset, base_offset + high + 1, false);
+            DSA_SORT_VIS_DECL(int base_offset = Vis::Index(first);)
+            DSA_SORT_FOCUS_RANGE("A", first, last);
             // 1. 通过采样器选择一个主元(pivot)的值
             auto pivot_it = sampler(first, last);
             auto pivot = *pivot_it;
-            /*VIS*/ DSA_VIS_ARR_MARK("A", base_offset + static_cast<int>(pivot_it - first), false);
-            /*VIS*/ DSA_VIS_MSG(std::string("Partition：pivot 下标=") + std::to_string(base_offset + static_cast<int>(pivot_it - first)), false);
+            DSA_SORT_VIS_DECL(int pivot_index = Vis::Index(pivot_it);)
+            DSA_SORT_MARK("A", pivot_it);
+            DSA_SORT_STEP(std::string("Partition：在区间 [") + std::to_string(base_offset) + "," + std::to_string(base_offset + high + 1) + ") 选择 pivot 下标 " + std::to_string(pivot_index));
             // 2. 双指针分区过程
             while (true)
             {
@@ -234,18 +242,16 @@ namespace DSA
                 // 如果 low 和 high 指针交错，说明分区完成
                 if (low < high)
                 {
-                    /*VIS*/ DSA_VIS_MSG(std::string("Partition 交换：") + std::to_string(base_offset + low) + " <-> " + std::to_string(base_offset + high), false);
-                    /*VIS*/ DSA_VIS_ARR_MARK("A", base_offset + low, false);
-                    /*VIS*/ DSA_VIS_ARR_MARK("A", base_offset + high, false);
-                    std::swap(arr[low++], arr[high--]); /*VIS*/ DSA_VIS_ARR_SWAP("A", base_offset + low - 1, base_offset + high + 1, true);
-                    /*VIS*/ DSA_VIS_ARR_UNMARK("A", base_offset + low - 1, false);
-                    /*VIS*/ DSA_VIS_ARR_UNMARK("A", base_offset + high + 1, false);
+                    std::swap(arr[low], arr[high]);
+                    DSA_SORT_SWAP_EVENT(arr, low, high, std::string("Partition 交换两侧错位元素：") + std::to_string(Vis::Index(arr, low)) + " <-> " + std::to_string(Vis::Index(arr, high)));
+                    ++low;
+                    --high;
                 }
                 else
                     break;
             }
-            /*VIS*/ DSA_VIS_ARR_UNMARK("A", base_offset + static_cast<int>(pivot_it - first), false);
-            /*VIS*/ DSA_VIS_MSG("Partition 完成", false);
+            DSA_SORT_UNMARK("A", pivot_it);
+            DSA_SORT_STEP(std::string("Partition 完成：分割点为 ") + std::to_string(Vis::Index(arr + std::max(1, low))) + "，左侧不大于 pivot，右侧不小于 pivot");
             // 这是一个非常规的返回值。
             // 传统的Hoare分区会返回一个索引，但这里返回的是一个迭代器。
             // `std::max(1, low)` 是为了防止当pivot是数组中最小元素时，low可能为0，
@@ -271,30 +277,28 @@ namespace DSA
          * 不稳定排序
          */
         template <typename RandIt, typename Sampler>
-        void QuickSort(RandIt first, RandIt last, Sampler &sampler, RandIt base_first)
+        void QuickSort(RandIt first, RandIt last, Sampler &sampler)
         {
             // std::sort(first,last);
             int n = std::distance(first, last);
             if (n <= 1)
                 return;
-            /*VIS*/ DSA_VIS_ARR_INIT("A", first, last);
-            int base_offset = static_cast<int>(first - base_first);
-            /*VIS*/ DSA_VIS_MSG(std::string("QuickSort 处理区间 [") + std::to_string(base_offset) + "," + std::to_string(base_offset + n) + ")", false);
-            /*VIS*/ DSA_VIS_ARR_FOCUS("A", base_offset, base_offset + n, true);
+            DSA_SORT_VIS_DECL(int base_offset = Vis::Index(first);)
+            DSA_SORT_STEP(std::string("QuickSort 处理区间 [") + std::to_string(base_offset) + "," + std::to_string(base_offset + n) + ")");
+            DSA_SORT_FOCUS_RANGE("A", first, last, false);
             // p 是由Partition返回的分割点，它是右侧子区间的起始。
-            auto p = Partition<RandIt, Sampler>(first, last, sampler, base_first);
-            QuickSort(first, p, sampler, base_first);
-            QuickSort(p, last, sampler, base_first);
-            /*VIS*/ DSA_VIS_ARR_FOCUS("A", base_offset, base_offset + n, false);
-            if (base_offset == 0)
-                /*VIS*/ DSA_VIS_MSG("QuickSort 完成", false);
+            auto p = Partition<RandIt, Sampler>(first, last, sampler);
+            DSA_SORT_STEP(std::string("QuickSort：分治为左区间 [") + std::to_string(base_offset) + "," + std::to_string(Vis::Index(p)) + ") 和右区间 [" + std::to_string(Vis::Index(p)) + "," + std::to_string(base_offset + n) + ")");
+            QuickSort(first, p, sampler);
+            QuickSort(p, last, sampler);
+            DSA_SORT_FOCUS_RANGE("A", first, last, false);
         }
         // 快速排序的默认版本，使用“三数取中”策略，因为它通常表现最好。
         template <typename RandIt>
         void QuickSort(RandIt first, RandIt last)
         {
             MedianOfThreeSampler sampler{};
-            return QuickSort<RandIt, MedianOfThreeSampler>(first, last, sampler, first);
+            return QuickSort<RandIt, MedianOfThreeSampler>(first, last, sampler);
         }
         /**
          * @brief 堆排序
@@ -318,9 +322,8 @@ namespace DSA
             if (n <= 1)
                 return;
             auto arr = first;
-            /*VIS*/ DSA_VIS_ARR_INIT("A", first, last);
-            /*VIS*/ DSA_VIS_ARR_FOCUS("A", 0, n, false);
-            /*VIS*/ DSA_VIS_MSG(std::string("堆排序开始：n=") + std::to_string(n), true);
+            DSA_SORT_FOCUS_RANGE("A", first, last);
+            DSA_SORT_STEP(std::string("堆排序开始：n=") + std::to_string(n));
             // shift_down 函数（也叫 heapify ）：
             // 作用是让以 root_pos 为根的子树重新符合最大堆的性质。
             // 它假设左右子树已经是最大堆。
@@ -335,9 +338,13 @@ namespace DSA
                         --child_pos;
                     // 如果根节点比最大的孩子还大，则无需调整，堆性质已满足
                     if ((arr[child_pos] < arr[root_pos]))
+                    {
+                        DSA_SORT_STEP(std::string("堆调整停止：父节点 ") + std::to_string(Vis::Index(arr, root_pos)) + " 已经不小于较大孩子 " + std::to_string(Vis::Index(arr, child_pos)));
                         return;
+                    }
                     // 否则，将根与较大孩子交换
-                    std::swap(arr[child_pos], arr[root_pos]); /*VIS*/ DSA_VIS_ARR_SWAP("A", root_pos, child_pos, true);
+                    std::swap(arr[child_pos], arr[root_pos]);
+                    DSA_SORT_SWAP_EVENT(arr, root_pos, child_pos, std::string("堆调整：父节点 ") + std::to_string(Vis::Index(arr, root_pos)) + " 小于较大孩子 " + std::to_string(Vis::Index(arr, child_pos)) + "，交换并继续下沉");
                     // 继续向下调整
                     root_pos = child_pos;
                     child_pos = root_pos * 2 + 2;
@@ -346,7 +353,12 @@ namespace DSA
                 --child_pos;
                 if (child_pos < end_pos && (arr[root_pos] < arr[child_pos]))
                 {
-                    std::swap(arr[child_pos], arr[root_pos]); /*VIS*/ DSA_VIS_ARR_SWAP("A", root_pos, child_pos, true);
+                    std::swap(arr[child_pos], arr[root_pos]);
+                    DSA_SORT_SWAP_EVENT(arr, root_pos, child_pos, std::string("堆调整：父节点 ") + std::to_string(Vis::Index(arr, root_pos)) + " 小于唯一左孩子 " + std::to_string(Vis::Index(arr, child_pos)) + "，交换");
+                }
+                else
+                {
+                    DSA_SORT_STEP(std::string("堆调整停止：下标 ") + std::to_string(Vis::Index(arr, root_pos)) + " 已满足堆序或没有孩子");
                 }
                 return;
             }; //[root_pos,end_pos)
@@ -357,20 +369,20 @@ namespace DSA
             // making heap
             for (int i = n / 2 - 1; i >= 0; i--)
                 shift_down(i, n);
-            /*VIS*/ DSA_VIS_MSG("建堆完成，开始弹出最大值", true);
+            DSA_SORT_STEP("建堆完成，开始依次弹出最大值");
             // popping to sort
 
             // 2. 排序过程
             // 循环 n-1 次，每次将堆顶（最大值）换到数组末尾，然后调整剩余的堆。
             for (int i = n - 1; i > 0; i--)
             {
-                /*VIS*/ DSA_VIS_MSG(std::string("将堆顶交换到下标 ") + std::to_string(i), false);
                 // 将当前最大值 arr[0] 和堆的末尾元素 arr[i] 交换
-                std::swap(arr[0], arr[i]); /*VIS*/ DSA_VIS_ARR_SWAP("A", 0, i, true);
+                std::swap(arr[0], arr[i]);
+                DSA_SORT_SWAP_EVENT(arr, 0, i, std::string("堆排序：将当前堆顶最大值交换到最终位置 ") + std::to_string(Vis::Index(arr, i)));
                 // 堆的大小减一（通过end_pos=i），并对新的堆顶进行shift_down操作
                 shift_down(0, i);
             }
-            /*VIS*/ DSA_VIS_MSG("堆排序结束", false);
+            DSA_SORT_STEP("堆排序结束");
         }
 
         /**
@@ -383,25 +395,23 @@ namespace DSA
          * @note 这是归并排序的内部实现。它依赖于一个外部传入的缓冲区来避免在递归中反复分配内存，从而提高性能。
          */
         template <typename RandIt>
-        void MergeSort(RandIt first, RandIt last, RandIt bfirst, RandIt abase, RandIt bbase)
+        void MergeSort(RandIt first, RandIt last, RandIt bfirst)
         {
             int n = std::distance(first, last);
             if (n <= 1)
                 return;
-            /*VIS*/ DSA_VIS_ARR_INIT("A", first, last);
-            /*VIS*/ DSA_VIS_ARR_INIT("B", bfirst, bfirst + n);
-            int base_offset = static_cast<int>(first - abase);
-            /*VIS*/ DSA_VIS_MSG(std::string("归并排序处理区间 [") + std::to_string(base_offset) + "," + std::to_string(base_offset + n) + ")", false);
-            /*VIS*/ DSA_VIS_ARR_FOCUS("A", base_offset, base_offset + n, true);
+            DSA_SORT_VIS_DECL(int base_offset = Vis::Index(first);)
+            DSA_SORT_NOTE(std::string("归并排序处理区间 [") + std::to_string(base_offset) + "," + std::to_string(base_offset + n) + ")");
+            DSA_SORT_FOCUS_RANGE("A", first, last, true);
             int mid = n / 2;
 
             // 注意：这里递归调用时，原数组被分裂，但缓冲区也相应地被分裂使用
             // 排序左半部分 [first, first + mid)，使用缓冲区的前半部分 [bfirst, bfirst + mid)
-            MergeSort(first, first + mid, bfirst, abase, bbase);
+            MergeSort(first, first + mid, bfirst);
             // 排序右半部分 [first + mid, last)，使用缓冲区的后半部分 [bfirst + mid, bfirst + n)
-            MergeSort(first + mid, last, bfirst + mid, abase, bbase);
-            /*VIS*/ DSA_VIS_ARR_FOCUS("A", base_offset, base_offset + n, false);
-            /*VIS*/ DSA_VIS_MSG("合并两个有序子区间", true);
+            MergeSort(first + mid, last, bfirst + mid);
+            DSA_SORT_FOCUS_RANGE("A", first, last, false);
+            DSA_SORT_STEP(std::string("归并排序：合并有序子区间 [") + std::to_string(base_offset) + "," + std::to_string(base_offset + mid) + ") 和 [" + std::to_string(base_offset + mid) + "," + std::to_string(base_offset + n) + ")");
             auto arr = first;
             // merging
             {
@@ -416,12 +426,16 @@ namespace DSA
                     if (arr[r] < arr[l])
                     {
                         auto written_value = arr[r++];
-                        *(blast++) = written_value; /*VIS*/ DSA_VIS_ARR_SET("B", static_cast<int>((blast - bbase) - 1), written_value, true);
+                        DSA_SORT_VIS_DECL(int write_pos = Vis::BufferIndex(blast);)
+                        *(blast++) = written_value;
+                        DSA_SORT_SET_BUFFER_AT("B", blast - 1, written_value, std::string("归并排序：右子区间当前元素更小，写入缓冲区下标 ") + std::to_string(write_pos));
                     }
                     else
                     {
                         auto written_value = arr[l++];
-                        *(blast++) = written_value; /*VIS*/ DSA_VIS_ARR_SET("B", static_cast<int>((blast - bbase) - 1), written_value, true);
+                        DSA_SORT_VIS_DECL(int write_pos = Vis::BufferIndex(blast);)
+                        *(blast++) = written_value;
+                        DSA_SORT_SET_BUFFER_AT("B", blast - 1, written_value, std::string("归并排序：左子区间当前元素更小或相等，写入缓冲区下标 ") + std::to_string(write_pos));
                     }
                 }
                 // 将某一半数组中剩余的元素（如果有的话）复制到缓冲区末尾
@@ -430,23 +444,28 @@ namespace DSA
                 {
                     for (; l < mid; ++l)
                     {
-                        *(blast++) = arr[l]; /*VIS*/ DSA_VIS_ARR_SET("B", static_cast<int>((blast - bbase) - 1), arr[l], true);
+                        DSA_SORT_VIS_DECL(int write_pos = Vis::BufferIndex(blast);)
+                        *(blast++) = arr[l];
+                        DSA_SORT_SET_BUFFER_AT("B", blast - 1, arr[l], std::string("归并排序：左子区间仍有剩余，写入缓冲区下标 ") + std::to_string(write_pos));
                     }
                 }
                 else
                 {
                     for (; r < n; ++r)
                     {
-                        *(blast++) = arr[r]; /*VIS*/ DSA_VIS_ARR_SET("B", static_cast<int>((blast - bbase) - 1), arr[r], true);
+                        DSA_SORT_VIS_DECL(int write_pos = Vis::BufferIndex(blast);)
+                        *(blast++) = arr[r];
+                        DSA_SORT_SET_BUFFER_AT("B", blast - 1, arr[r], std::string("归并排序：右子区间仍有剩余，写入缓冲区下标 ") + std::to_string(write_pos));
                     }
                 }
                 for (int i = 0; i < n; ++i)
                 {
-                    arr[i] = bfirst[i]; /*VIS*/ DSA_VIS_ARR_SET("A", base_offset + i, arr[i], true);
+                    DSA_SORT_VIS_DECL(int write_pos = Vis::Index(arr + i);)
+                    arr[i] = bfirst[i];
+                    DSA_SORT_SET_AT("A", arr + i, arr[i], std::string("归并排序：将缓冲区结果写回原数组下标 ") + std::to_string(write_pos));
                 }
+                DSA_SORT_STEP(std::string("归并排序：区间 [") + std::to_string(base_offset) + "," + std::to_string(base_offset + n) + ") 合并完成");
             }
-            if (base_offset == 0)
-                /*VIS*/ DSA_VIS_MSG("归并排序完成", false);
         }
         /**
          * @brief 归并排序（对外接口）
@@ -470,7 +489,9 @@ namespace DSA
             if (n <= 1)
                 return;
             std::vector<iterator_value_type_t<RandIt>> buf(n);
-            MergeSort(first, last, buf.begin(), first, buf.begin());
+            DSA_SORT_VIS_DECL(Vis::BufferScope<decltype(buf.begin())> buffer_scope(buf.begin(), buf.end(), "B");)
+            MergeSort(first, last, buf.begin());
+            DSA_SORT_STEP("归并排序完成");
         }
 
         // --- 基数排序的辅助组件 ---
@@ -562,10 +583,9 @@ namespace DSA
             using value_type = iterator_value_type_t<RandIt>;
             auto arr = first;
             std::vector<value_type> buf(n);                  // 辅助数组，用于存放每轮排序的结果
-            /*VIS*/ DSA_VIS_ARR_INIT("A", first, last);
-            /*VIS*/ DSA_VIS_ARR_INIT("B", buf.begin(), buf.end());
-            /*VIS*/ DSA_VIS_ARR_FOCUS("A", 0, n, false);
-            /*VIS*/ DSA_VIS_MSG(std::string("基数排序开始：n=") + std::to_string(n), true);
+            DSA_SORT_VIS_DECL(Vis::BufferScope<decltype(buf.begin())> buffer_scope(buf.begin(), buf.end(), "B");)
+            DSA_SORT_FOCUS_RANGE("A", first, last, false);
+            DSA_SORT_STEP(std::string("基数排序开始：n=") + std::to_string(n));
             constexpr int max_key = Adapter::max_key_size;   // 对于整形，通常是256，因为按字节排序
             std::array<size_t, max_key> counts{};            // 计数数组
             int key_n = Adapter::end_key_index(first, last); // 比较的轮数，对于整形为总共要比较的字节数（例如int是4）
@@ -573,7 +593,7 @@ namespace DSA
             // 从最低位字节 (key_id=0) 到最高位字节进行循环
             for (int key_id = 0; key_id < key_n; key_id++)
             {
-                /*VIS*/ DSA_VIS_MSG(std::string("处理第 ") + std::to_string(key_id) + " 个字节", true);
+                DSA_SORT_STEP(std::string("基数排序：处理第 ") + std::to_string(key_id) + " 个字节，先统计桶大小");
                 // --- 以下是计数排序的实现 ---
                 // 1. 计数：统计当前字节值为 0-255 的元素各有多少个
                 std::fill(counts.begin(), counts.end(), 0);
@@ -581,27 +601,34 @@ namespace DSA
                 {
                     counts[adapter(arr[i], key_id)]++;
                 }
+                DSA_SORT_STEP(std::string("基数排序：第 ") + std::to_string(key_id) + " 个字节计数完成，开始计算桶右边界");
 
                 // 2. 累加：计算每个桶的右边界。counts[i] 表示小于等于i的元素总数
                 for (int i = 1; i < max_key; ++i)
                 {
                     counts[i] += counts[i - 1];
                 }
+                DSA_SORT_STEP(std::string("基数排序：第 ") + std::to_string(key_id) + " 个字节桶边界完成，从右向左稳定放置元素");
 
                 // 3. 放置：从后向前遍历原数组，以保证排序的稳定性。
                 //    根据 counts 数组中记录的位置，将元素放入辅助数组 buf 中。
                 for (int i = n - 1; i >= 0; i--)
                 {
-                    buf[--counts[adapter(arr[i], key_id)]] = arr[i]; /*VIS*/ DSA_VIS_ARR_SET("B", static_cast<int>(counts[adapter(arr[i], key_id)]), arr[i], true);
+                    auto bucket = adapter(arr[i], key_id);
+                    auto write_pos = --counts[bucket];
+                    buf[write_pos] = arr[i];
+                    DSA_SORT_SET_BUFFER_AT("B", buf.begin() + static_cast<int>(write_pos), arr[i], std::string("基数排序：从右向左保持稳定性，将元素放入桶 ") + std::to_string(bucket) + " 的位置 " + std::to_string(write_pos));
                 }
 
                 // 4. 复制：将本轮排序后的结果从 buf 复制回原数组
                 for (int i = 0; i < n; ++i)
                 {
-                    first[i] = buf[i]; /*VIS*/ DSA_VIS_ARR_SET("A", i, first[i], true);
+                    first[i] = buf[i];
+                    DSA_SORT_SET_AT("A", first + i, first[i], std::string("基数排序：第 ") + std::to_string(key_id) + " 个字节排序后写回下标 " + std::to_string(Vis::Index(first, i)));
                 }
+                DSA_SORT_STEP(std::string("基数排序：第 ") + std::to_string(key_id) + " 个字节处理完成，数组按低位到当前位保持有序");
             }
-            /*VIS*/ DSA_VIS_MSG("基数排序结束", false);
+            DSA_SORT_STEP("基数排序结束");
         }
 
         /**
@@ -723,15 +750,14 @@ namespace DSA
             if (n <= 1)
                 return;
             auto arr = first;
-            /*VIS*/ DSA_VIS_ARR_INIT("A", first, last);
-            /*VIS*/ DSA_VIS_ARR_FOCUS("A", 0, n, false);
-            /*VIS*/ DSA_VIS_MSG(std::string("希尔排序开始：n=") + std::to_string(n), true);
+            DSA_SORT_FOCUS_RANGE("A", first, last, false);
+            DSA_SORT_STEP(std::string("希尔排序开始：n=") + std::to_string(n));
             GapGen gap_generator(n);
 
             // 外层循环：获取递减的间隔(gap)序列
             for (int gap = gap_generator(); gap > 0; gap = gap_generator())
             {
-                /*VIS*/ DSA_VIS_MSG(std::string("当前 gap=") + std::to_string(gap), true);
+                DSA_SORT_STEP(std::string("希尔排序：当前 gap=") + std::to_string(gap) + "，对各个间隔子序列做插入排序");
 
                 // 中层循环：对每个以gap为间隔的子序列进行插入排序
                 // 这个循环从第gap个元素开始，逐个处理到数组末尾
@@ -741,14 +767,19 @@ namespace DSA
                     // 下面是标准的插入排序逻辑，但步长是gap而不是1
                     auto tmp = arr[i];
                     int j = i;
+                    DSA_SORT_STEP(std::string("希尔排序：处理下标 ") + std::to_string(Vis::Index(arr, i)) + "，在 gap=" + std::to_string(gap) + " 的子序列中插入");
                     for (; j >= gap && tmp < arr[j - gap]; j -= gap)
                     {
-                        arr[j] = arr[j - gap]; /*VIS*/ DSA_VIS_ARR_SET("A", j, arr[j], true);
+                        arr[j] = arr[j - gap];
+                        DSA_SORT_SET_AT("A", arr + j, arr[j], std::string("希尔排序：下标 ") + std::to_string(Vis::Index(arr, j - gap)) + " 的元素后移到 " + std::to_string(Vis::Index(arr, j)));
                     }
-                    arr[j] = tmp; /*VIS*/ DSA_VIS_ARR_SET("A", j, arr[j], (j != i));
+                    arr[j] = tmp;
+                    DSA_SORT_SET_AT("A", arr + j, arr[j], std::string("希尔排序：暂存元素插入到下标 ") + std::to_string(Vis::Index(arr, j)), j != i);
+                    if (j == i)
+                        DSA_SORT_STEP(std::string("希尔排序：下标 ") + std::to_string(Vis::Index(arr, i)) + " 在当前 gap 子序列中无需移动");
                 }
             }
-            /*VIS*/ DSA_VIS_MSG("希尔排序结束", false);
+            DSA_SORT_STEP("希尔排序结束");
         }
         // 希尔排序的默认版本，使用 Knuth 间隔序列
         template <typename RandIt>

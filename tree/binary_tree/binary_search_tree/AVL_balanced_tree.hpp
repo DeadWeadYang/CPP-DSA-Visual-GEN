@@ -1,5 +1,6 @@
-#pragma once
+﻿#pragma once
 #include "binary_search_tree.hpp"
+#include "../../tree_vis.hpp"
 #include <string>
 
 namespace DSA
@@ -12,6 +13,8 @@ namespace DSA
             {
                 namespace AVLTree
                 {
+                    using DSA::Tree::Vis::BTreeFocus;
+                    using DSA::Tree::Vis::BTreeUnfocus;
                     // 这是一个“增强策略”，专门为节点添加“高度”信息。
                     // 它是策略模式的一个应用，将AVL树特定的数据(height)和行为(update)与通用BST逻辑解耦。
                     template <typename OtherAugment = DefaultNodeAugmentation>
@@ -68,6 +71,9 @@ namespace DSA
                     {
                         using node_base = AVLTreeNodeLinked<T, AugmentPolicy>::node_base;
                         swap_node(static_cast<node_base &>(x), static_cast<node_base &>(y));
+                        using HeightData = SubtreeHeightAugment<AugmentPolicy>::Data;
+                        DSA_VIS_BT_SET_NOTE("T", &x, std::string("h=") + std::to_string(SubtreeHeightAugment<AugmentPolicy>::get_height(static_cast<const HeightData *>(&x))), false); /*VIS*/
+                        DSA_VIS_BT_SET_NOTE("T", &y, std::string("h=") + std::to_string(SubtreeHeightAugment<AugmentPolicy>::get_height(static_cast<const HeightData *>(&y))), false); /*VIS*/
                     }
                     // AVL树的主类。
                     template <typename T, typename KeyT = T, typename Compare = std::less<KeyT>, typename KeyOfValue = IdentityKeyOfValue<T>, typename OtherAugment = DefaultNodeAugmentation>
@@ -131,14 +137,13 @@ namespace DSA
                         // < -1: 左子树过高 (Left-heavy)
                         // [-1, 1]: 平衡
                         static int get_balance_factor(Node *node) { return node ? (get_height(node->right()) - get_height(node->left())) : 0; }
-
                         // 从parent节点开始，向上回溯至根，检查并修复所有不满足AVL平衡条件的节点。
                         void height_rebalance(Node *parent)
                         {
                             // balance_factor = right_height - left_heght
                             if (!parent)
                                 return;
-                            /*VIS*/ DSA_VIS_MSG("AVL 回溯检查平衡因子", false);
+                            /*VIS*/ DSA_VIS_NOTE("AVL 回溯检查平衡因子");
                             bool to_right;
                             // 循环从修改点的父节点开始，一直向上检查到根（的父节点，即header）。
                             while (parent != this->end_ptr())
@@ -151,30 +156,43 @@ namespace DSA
                                     parent = parent->parent;
                                     continue;
                                 }
-                                /*VIS*/ DSA_VIS_MSG(std::string("AVL 失衡：bf=") + std::to_string(pbf), true);
+                                /*VIS*/ DSA_VIS_STEP(std::string("AVL 回溯发现失衡节点 parent：bf=") + std::to_string(pbf) + (pbf < 0 ? "，左子树比右子树高至少 2" : "，右子树比左子树高至少 2"));
                                 // --- 如果代码执行到这里，说明parent节点不平衡，需要旋转 ---
 
                                 // `node` 是 `parent` 的较高一侧的子节点。
                                 Node *node = (pbf < 0 ? parent->left() : parent->right()); // the higher child
                                 int nbf = get_balance_factor(node);                        // can only be -1 or 0 or 1
+                                DSA_VIS_DECL(bool parent_left_heavy = (pbf < 0);)
+                                DSA_VIS_DECL(bool child_left_heavy = (nbf < 0);)
+                                DSA_VIS_DECL(bool child_right_heavy = (nbf > 0);)
+                                DSA_VIS_DECL(std::string parent_side = parent_left_heavy ? "左" : "右";)
+                                DSA_VIS_DECL(std::string child_side = child_left_heavy ? "左" : (child_right_heavy ? "右" : "中");)
+                                DSA_VIS_DECL(std::string avl_case = parent_left_heavy ? (child_right_heavy ? "LR" : "LL") : (child_left_heavy ? "RL" : "RR");)
+                                DSA_VIS_ONLY(BTreeFocus(parent, node));
+                                /*VIS*/ DSA_VIS_STEP("AVL 判定旋转类型：" + avl_case + "。parent 的" + parent_side + "子树过高，较高子节点 node 的 bf=" + std::to_string(nbf) + "（" + child_side + "侧更高/或两侧等高）");
 
                                 // 判断是需要双旋转 (LR, RL) 还是单旋转 (LL, RR)。
                                 // 如果parent和node的失衡方向相反 (pbf和nbf异号)，则为双旋转情况。
                                 if (nbf * pbf < 0)
                                 {
-                                    /*VIS*/ DSA_VIS_MSG("AVL 双旋第一步：对子节点旋转", true);
+                                    Node *inner = nbf < 0 ? node->left() : node->right();
+                                    DSA_VIS_ONLY(BTreeFocus(inner));
+                                    /*VIS*/ DSA_VIS_STEP(avl_case + " 型双旋第一步：parent 和 node 的较高方向相反，先对 node " + std::string(nbf < 0 ? "右旋" : "左旋") + "，让内侧孙节点上升，把三角形转成直线");
                                     // 双旋转的第一步：对`node`进行一次反向旋转，将其转换为单旋转的情况。
                                     // here, balance_factor of node can only be -1 or 1
                                     // in this case, the higher child of node and the higher child (aka node) of parent are in different direction
-                                    this->rotate(node, to_right = (nbf < 0)); /*VIS*/ (to_right ? DSA_VIS_BT_ROTATE_RIGHT("T", node, true) : DSA_VIS_BT_ROTATE_LEFT("T", node, true));
+                                    this->rotate(node, to_right = (nbf < 0)); /*VIS*/ (to_right ? DSA_VIS_BT_ROTATE_RIGHT("T", node, false) : DSA_VIS_BT_ROTATE_LEFT("T", node, false));
                                     // 旋转后，`node`指针仍然指向原来的节点，但该节点已成为子节点。
                                     // 必须将其更新为新的父节点(即旋转后的子树新根)，为下一步做准备。
                                     node = node->parent;
+                                    /*VIS*/ DSA_VIS_STEP(avl_case + " 型双旋第一步完成：新的 node 成为较高子树根，接下来按单旋处理 parent");
                                 }
                                 // 单旋转或双旋转的第二步：对`parent`进行旋转。
                                 // now the higher child of (new)node and the higher child (aka (new)node) of parent are in the same direction
-                                this->rotate(parent, to_right = (pbf < 0)); /*VIS*/ (to_right ? DSA_VIS_BT_ROTATE_RIGHT("T", parent, true) : DSA_VIS_BT_ROTATE_LEFT("T", parent, true));
-                                /*VIS*/ DSA_VIS_MSG("AVL 旋转修复完成一轮", false);
+                                /*VIS*/ DSA_VIS_STEP(avl_case + " 型最终旋转：对失衡节点 parent " + std::string(pbf < 0 ? "右旋" : "左旋") + "，让较高子节点上升为局部子树新根");
+                                this->rotate(parent, to_right = (pbf < 0)); /*VIS*/ (to_right ? DSA_VIS_BT_ROTATE_RIGHT("T", parent, false) : DSA_VIS_BT_ROTATE_LEFT("T", parent, false));
+                                /*VIS*/ DSA_VIS_STEP("AVL 本轮旋转修复完成：局部子树重新满足 |bf| <= 1，继续向上检查祖先");
+                                DSA_VIS_ONLY(BTreeUnfocus(parent, node, parent->left(), parent->right(), node->left(), node->right()));
                                 // `parent`指针指向的节点在旋转后已成为子节点。
                                 // `parent->parent` 现在指向整个旋转操作完成后的新子树的根
                                 node = parent->parent;
@@ -190,7 +208,7 @@ namespace DSA
                         Node *createNodeInternal(const T &v) override
                         {
                             Node *node = set_height(Base::createNodeInternal(v), 1); /*VIS*/ DSA_VIS_BT_SET_NOTE("T", node, "h=1", false);
-                            /*VIS*/ DSA_VIS_MSG("AVL 新节点高度初始化为 1", false);
+                            /*VIS*/ DSA_VIS_NOTE("AVL 新节点高度初始化为 1");
                             return node;
                         }
                         // 检查全树是否满足AVL属性的辅助函数，用于调试和验证。
@@ -222,3 +240,4 @@ namespace DSA
         }
     }
 }
+

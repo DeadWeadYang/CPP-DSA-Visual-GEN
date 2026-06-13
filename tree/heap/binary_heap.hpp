@@ -47,19 +47,19 @@ namespace DSA
                      */
                     void push(const T &d)
                     {
-                        vis_ensure_init();
-                        DSA_VIS_MSG(std::string("堆插入：") + vis_to_string(d), true); /*VIS*/
+                        DSA_VIS_ONLY(vis_ensure_init());
+                        DSA_VIS_STEP(std::string("堆插入：新元素 ") + vis_to_string(d) + " 放到末尾 idx=" + std::to_string(size_r) + "，堆大小 +1"); /*VIS*/
                         // 如果底层vector容量足够，直接在逻辑末尾放置元素，否则扩展向量。
                         if (size_r == data.size())
                             data.push_back(d);
                         else
                             data[size_r] = d;
-                        vis_add_index(size_r, false);
+                        DSA_VIS_ONLY(vis_add_index(size_r, false));
                         ++size_r;
-                        vis_sync_array(false);
+                        DSA_VIS_ONLY(vis_rebuild_array());
                         // 对新加入的元素执行上浮操作，并增加堆的逻辑大小。
                         adjustUp(static_cast<int>(size_r - 1));
-                        DSA_VIS_MSG("上浮完成", false); /*VIS*/
+                        DSA_VIS_STEP("堆插入完成：上浮结束"); /*VIS*/
                         // equivalent to std::push_heap
                     }
                     /**
@@ -71,25 +71,26 @@ namespace DSA
                      */
                     void pop()
                     {
-                        vis_ensure_init();
+                        DSA_VIS_ONLY(vis_ensure_init());
                         if (!size_r)
                             return;
-                        DSA_VIS_MSG(std::string("堆弹出堆顶：") + vis_to_string(data[0]), true); /*VIS*/
+                        DSA_VIS_STEP(std::string("堆弹出堆顶：") + vis_to_string(data[0])); /*VIS*/
                         if (size_r == 1)
                         {
-                            vis_remove_last_index(false);
+                            DSA_VIS_ONLY(vis_remove_last_index(false));
                             --size_r;
-                            vis_sync_array(false);
+                            DSA_VIS_ONLY(vis_rebuild_array());
+                            DSA_VIS_STEP("堆弹出完成：删除唯一元素后堆为空"); /*VIS*/
                             return;
                         }
                         // 将堆顶元素与最后一个元素交换，然后将堆的逻辑大小减一。
-                        swap_indices(0, size_r - 1, true);
-                        vis_remove_last_index(false);
+                        swap_indices(0, size_r - 1);
+                        DSA_VIS_ONLY(vis_remove_last_index(false));
                         --size_r;
-                        vis_sync_array(false);
+                        DSA_VIS_ONLY(vis_rebuild_array());
                         // 对新的根节点执行下沉操作。
                         adjustDown(0);
-                        DSA_VIS_MSG("下沉完成", false); /*VIS*/
+                        DSA_VIS_STEP("堆弹出完成：下沉结束"); /*VIS*/
                     }
                     // 释放底层向量中未使用的容量，减少内存占用。
                     void shrink_to_fit()
@@ -104,12 +105,11 @@ namespace DSA
                     std::vector<T> data; // 使用 std::vector 作为堆的底层存储。
                     size_t size_r = 0;   // 堆的逻辑大小，可能小于 `data.size()`。
                     Compare comp;        // 用于比较元素的函数对象。
+#ifdef DSA_VIS_ENABLE
                     static constexpr const char *k_vis_arr = "HA";
                     static constexpr const char *k_vis_tree = "HT";
-#ifdef DSA_VIS_ENABLE
                     bool vis_ready = false;
                     size_t vis_tree_size = 0;
-#endif
 
                     std::string vis_to_string(const T &value) const
                     {
@@ -121,40 +121,28 @@ namespace DSA
                     {
                         return std::string("i=") + std::to_string(idx);
                     }
-#ifdef DSA_VIS_ENABLE
-                    const void *vis_super_root_ref() const
-                    {
-                        return static_cast<const void *>(this);
-                    }
                     const void *vis_index_ref(size_t idx) const
                     {
                         return reinterpret_cast<const void *>(static_cast<std::uintptr_t>(idx + 1));
                     }
-#endif
                     void vis_ensure_init()
                     {
-#ifdef DSA_VIS_ENABLE
                         if (vis_ready)
                             return;
                         DSA_VIS_ARR_INIT(k_vis_arr, data.begin(), data.begin() + size_r);          /*VIS*/
-                        DSA_VIS_ARR_SYNC(k_vis_arr, data.begin(), data.begin() + size_r, false);   /*VIS*/
+                        DSA_VIS_ARR_REBUILD(k_vis_arr, data.begin(), data.begin() + size_r, false); /*VIS*/
                         DSA_VIS_BT_INIT(k_vis_tree);                                                /*VIS*/
-                        DSA_VIS_BT_NEW_NODE(k_vis_tree, vis_super_root_ref(), "heap", false);      /*VIS*/
-                        DSA_VIS_BT_SET_ROOT(k_vis_tree, vis_super_root_ref(), false);              /*VIS*/
-                        DSA_VIS_BT_DESTROY_NODE(k_vis_tree, vis_super_root_ref(), false);          /*VIS*/
                         vis_tree_size = 0;
                         for (size_t i = 0; i < size_r; ++i)
                             vis_add_index(i, false);
                         vis_ready = true;
-#endif
                     }
-                    void vis_sync_array(bool step)
+                    void vis_rebuild_array()
                     {
-                        DSA_VIS_ARR_SYNC(k_vis_arr, data.begin(), data.begin() + size_r, step); /*VIS*/
+                        DSA_VIS_ARR_REBUILD(k_vis_arr, data.begin(), data.begin() + size_r, false); /*VIS*/
                     }
                     void vis_add_index(size_t idx, bool step)
                     {
-#ifdef DSA_VIS_ENABLE
                         if (idx < vis_tree_size)
                         {
                             vis_refresh_index(idx, step);
@@ -172,7 +160,6 @@ namespace DSA
                         }
                         vis_tree_size = idx + 1;
                         vis_refresh_index(idx, step);
-#endif
                     }
                     void vis_refresh_index(size_t idx, bool step)
                     {
@@ -182,25 +169,26 @@ namespace DSA
                     }
                     void vis_remove_last_index(bool step)
                     {
-#ifdef DSA_VIS_ENABLE
                         if (!size_r || vis_tree_size == 0)
                             return;
                         size_t last = size_r - 1;
-                        DSA_VIS_BT_REMOVE_NODE(k_vis_tree, vis_index_ref(last), false); /*VIS*/
-                        DSA_VIS_BT_DESTROY_NODE(k_vis_tree, vis_index_ref(last), step); /*VIS*/
+                        if (last == 0)
+                            DSA_VIS_BT_SET_ROOT(k_vis_tree, static_cast<const void *>(nullptr), false); /*VIS*/
+                        DSA_VIS_BT_REMOVE_NODE(k_vis_tree, vis_index_ref(last), false);                 /*VIS*/
+                        DSA_VIS_BT_DESTROY_NODE(k_vis_tree, vis_index_ref(last), false);                /*VIS*/
                         vis_tree_size = last;
-#endif
                     }
-                    void swap_indices(size_t i, size_t j, bool step)
+#endif
+                    void swap_indices(size_t i, size_t j)
                     {
                         if (i == j)
                             return;
                         DSA_VIS_ARR_MARK(k_vis_arr, static_cast<int>(i), false); /*VIS*/
                         DSA_VIS_ARR_MARK(k_vis_arr, static_cast<int>(j), false); /*VIS*/
                         std::swap(data[i], data[j]);
-                        DSA_VIS_ARR_SWAP(k_vis_arr, static_cast<int>(i), static_cast<int>(j), step); /*VIS*/
-                        vis_refresh_index(i, false);
-                        vis_refresh_index(j, false);
+                        DSA_VIS_ARR_SWAP(k_vis_arr, static_cast<int>(i), static_cast<int>(j), false); /*VIS*/
+                        DSA_VIS_ONLY(vis_refresh_index(i, false));
+                        DSA_VIS_ONLY(vis_refresh_index(j, false));
                         DSA_VIS_ARR_UNMARK(k_vis_arr, static_cast<int>(i), false); /*VIS*/
                         DSA_VIS_ARR_UNMARK(k_vis_arr, static_cast<int>(j), false); /*VIS*/
                     }
@@ -214,11 +202,12 @@ namespace DSA
                     void adjustUp(int pos)
                     {
                         int parent = (pos - 1) / 2; // 计算父节点的索引。
-                        DSA_VIS_MSG(std::string("开始上浮：idx=") + std::to_string(pos), false); /*VIS*/
+                        DSA_VIS_STEP(std::string("开始上浮：idx=") + std::to_string(pos)); /*VIS*/
                         // 当未到达根节点且当前节点比父节点“大”时循环。
                         while (pos > 0 && comp(data[parent], data[pos]))
                         {
-                            swap_indices(static_cast<size_t>(parent), static_cast<size_t>(pos), true);
+                            swap_indices(static_cast<size_t>(parent), static_cast<size_t>(pos));
+                            DSA_VIS_STEP(std::string("上浮交换：idx ") + std::to_string(pos) + " 与父节点 " + std::to_string(parent));
                             pos = parent;
                             parent = (pos - 1) / 2;
                         }
@@ -233,7 +222,7 @@ namespace DSA
                     void adjustDown(int pos)
                     {
                         int child = pos * 2 + 2; // 先指向右子节点。
-                        DSA_VIS_MSG(std::string("开始下沉：idx=") + std::to_string(pos), false); /*VIS*/
+                        DSA_VIS_STEP(std::string("开始下沉：idx=") + std::to_string(pos)); /*VIS*/
                         // 当节点至少有右子节点时循环。
                         while (child < size_r)
                         {
@@ -245,7 +234,8 @@ namespace DSA
                             if (!comp(data[pos], data[child]))
                                 return;
                             // 交换当前节点和其“更大”的子节点。
-                            swap_indices(static_cast<size_t>(pos), static_cast<size_t>(child), true);
+                            swap_indices(static_cast<size_t>(pos), static_cast<size_t>(child));
+                            DSA_VIS_STEP(std::string("下沉交换：idx ") + std::to_string(pos) + " 与孩子 " + std::to_string(child));
                             // 继续向下调整。
                             pos = child;
                             child = pos * 2 + 2;
@@ -254,7 +244,10 @@ namespace DSA
                         --child; // child 指向左子节点。
                         // 如果左子节点存在，且比当前节点“大”，则交换。
                         if (child < size_r && comp(data[pos], data[child]))
-                            swap_indices(static_cast<size_t>(child), static_cast<size_t>(pos), true);
+                        {
+                            swap_indices(static_cast<size_t>(child), static_cast<size_t>(pos));
+                            DSA_VIS_STEP(std::string("下沉交换：idx ") + std::to_string(pos) + " 与左孩子 " + std::to_string(child));
+                        }
                         return;
                     }
                 };

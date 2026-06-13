@@ -7,4 +7,4 @@
 #include "test/sorting_test.hpp"
 #include "test/topological_sorting_test.hpp"
 #include "test/shortest_path_test.hpp"
-#include "test/minimun_spanning_tree_test.hpp"
+#include "test/minimum_spanning_tree_test.hpp"
